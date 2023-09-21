@@ -1,0 +1,21 @@
+(kicad_sch (version 20211123) (generator eeschema)
+
+  (uuid c0007eb4-077e-4f77-aad9-8dd15548af06)
+
+  (paper "USLetter")
+
+  (title_block
+    (title "simple6502")
+    (date "2023-09-21")
+    (rev "0.1")
+    (company "Mariano Luna")
+  )
+
+  (lib_symbols
+  )
+
+
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+)
