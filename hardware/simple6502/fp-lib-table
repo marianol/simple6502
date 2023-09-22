@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "DS1813-10_")(type "KiCad")(uri "${KIPRJMOD}/library/DS1813-10_")(options "")(descr ""))
+)
