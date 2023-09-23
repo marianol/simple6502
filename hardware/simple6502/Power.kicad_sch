@@ -4,6 +4,13 @@
 
   (paper "A4")
 
+  (title_block
+    (title "simple6502")
+    (date "2023-09-23")
+    (rev "0.5")
+    (company "Mariano Luna")
+  )
+
   (lib_symbols
     (symbol "74xx:74HCT00" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
       (property "Reference" "U" (at 0 1.27 0)
