@@ -460,8 +460,8 @@
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.3048,
-        "via_diameter": 0.4572,
-        "via_drill": 0.254,
+        "via_diameter": 0.61,
+        "via_drill": 0.3,
         "wire_width": 6
       },
       {
@@ -477,8 +477,25 @@
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.508,
-        "via_diameter": 0.4572,
-        "via_drill": 0.254,
+        "via_diameter": 0.61,
+        "via_drill": 0.3,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.1524,
+        "diff_pair_gap": 0.1524,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.1524,
+        "line_style": 0,
+        "microvia_diameter": 0.4572,
+        "microvia_drill": 0.254,
+        "name": "Power_3",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 1.0,
+        "via_diameter": 0.61,
+        "via_drill": 0.3,
         "wire_width": 6
       }
     ],
@@ -493,15 +510,15 @@
         "pattern": "GND"
       },
       {
-        "netclass": "Power_1",
+        "netclass": "Power_2",
         "pattern": "VCC"
       },
       {
-        "netclass": "Power_1",
+        "netclass": "Power_3",
         "pattern": "/Power and support/5VDC IN"
       },
       {
-        "netclass": "Power_1",
+        "netclass": "Power_3",
         "pattern": "/Power and support/AUX GND"
       }
     ]
