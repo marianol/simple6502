@@ -6,8 +6,8 @@
 
   (title_block
     (title "simple6502")
-    (date "2023-09-23")
-    (rev "0.5")
+    (date "2023-09-25")
+    (rev "1.0")
     (company "Mariano Luna")
   )
 
@@ -3263,13 +3263,6 @@
     (effects (font (size 1.27 1.27)) (justify left))
     (uuid 6a6fe1e5-67ec-41b2-9637-ab387d976d44)
     (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 71.8071 140.97 0)
-      (effects (font (size 1.27 1.27)) (justify left) hide)
-    )
-  )
-  (global_label "~{IO_08}" (shape input) (at 86.36 140.97 0) (fields_autoplaced)
-    (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 7152f6df-c93c-4041-a363-b9f8887ca3b9)
-    (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 94.6671 140.97 0)
       (effects (font (size 1.27 1.27)) (justify left) hide)
     )
   )
