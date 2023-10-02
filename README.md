@@ -29,9 +29,9 @@ Exposed in the connector are:
 - $\phi$ 2 Clock
 - RAM and ROM chip select lines
 - Read and Write NOT $\bar{RD}$ and $\bar{WR}$ 
-- $\bar{RESET}$
+- $\overline{RESET}$
 - IO chip select lines IO_SEL1..IOSEL7, IO_SEL8 is used for the board debugger
-- $\bar{IRQ}$
+- $\overline{IRQ}$
 - VCC and GND, this are set so if you insert a card backwards you will not invert them
 
 
