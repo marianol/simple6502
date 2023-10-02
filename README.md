@@ -14,6 +14,25 @@ Target clock spped will be 2 Mhz. The PCB will be kept at 100x100mm to reduce co
 Momory Decocing is done using gates for RAM, ROM and IO. IO_CS line is sent to a 3-8 decoder to get 8 individual IO select lines.
 
 ### Address Space
-0x0000 - 0x7EFF : RAM 32K - 256 bytes
-0x7F00 - 0x7FFF : I/O 256 bytes to decode
-0x8000 - 0xFFFF : ROM 32K
+
+- 0x0000 - 0x7EFF : RAM 32K - 256 bytes
+- 0x7F00 - 0x7FFF : I/O 256 bytes to decode
+- 0x8000 - 0xFFFF : ROM 32K
+
+## Card Connector Design
+
+The card connector is based on the EDAC 395 series. I decided on the 395-50-520-201 which I had from a previous Apple ][ repair.
+Exposed in the connector are:
+
+- Address lines A0..A15
+- Data lines D0..D7
+- $\phi$ 2 Clock
+- RAM and ROM chip select lines
+- Read and Write NOT $\bar{RD}$ and $\bar{WR}$ 
+- $\bar{RESET}$
+- IO chip select lines IO_SEL1..IOSEL7, IO_SEL8 is used for the board debugger
+- $\bar{IRQ}$
+- VCC and GND, this are set so if you insert a card backwards you will not invert them
+
+
+
