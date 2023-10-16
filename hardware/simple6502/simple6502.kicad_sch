@@ -3116,7 +3116,7 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 3b41047f-8037-4990-bc9a-0c48a7bd8407)
   )
-  (text "Memory Map Decoder\nAddress Space\n0x0000 - 0x7EFF : RAM 32K - 256 bytes\n0x7F00 - 0x7FFF : I/O 256 bytes to decode\n0x8000 - 0xFFFF : ROM 32K\n"
+  (text "Memory Map Decoder\nAddress Space\n0x0000 - 0x7EFF : RAM 32K - 256 bytes\n0x7F00 - 0x7FFF : I/O 256 bytes decoded in 8 IO Lines\n0x8000 - 0xFFFF : ROM 32K\n"
     (at 20.32 124.46 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 485ebdbf-2fb2-40c3-9c9d-d6ba99dc29c7)
@@ -4158,7 +4158,7 @@
   (symbol (lib_id "Connector:TestPoint_Probe") (at 247.65 168.91 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 304c058a-4662-465a-8673-3b1e2e0630f5)
-    (property "Reference" "TP3" (at 254 163.83 0)
+    (property "Reference" "TP2" (at 254 163.83 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "~{RESET}" (at 254 166.37 0)
@@ -4174,7 +4174,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "TP3") (unit 1)
+          (reference "TP2") (unit 1)
         )
       )
     )
