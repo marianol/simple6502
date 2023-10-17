@@ -7,7 +7,9 @@ This project exists because of scope creep on my YAsixfive02 project, which is i
 ## Design 
 
 The goal is to build a simple 6502 SBC with RAM, ROM, IO decoding and a debug IO port with LEDs.An espansion bus will carry all the address, data and supporting lines to allow adding IO and other hardware expansions. 
-Target clock spped will be 2 Mhz. The PCB will be kept at 100x100mm to reduce cost.
+The design will be centered around a 6502 BUS that uses Apple ][ edge connectors (EDAC 395-050-520-201). The motherboard will have the basic power, reset and a simple debug IO port made of a 74HC273 octal flip-flop driving LEDs. 
+Target clock spped will be 2 Mhz. 
+All the PCBs will be kept at 100x100mm to reduce cost.
 
 ## Memory Map
 
