@@ -5,7 +5,7 @@
   (paper "USLetter")
 
   (title_block
-    (title "simple6502")
+    (title "All in One - simple6502")
     (date "2023-10-01")
     (rev "1.1")
     (company "Mariano Luna")
