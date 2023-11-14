@@ -7,7 +7,7 @@
   (title_block
     (title "6502 Motherboard")
     (date "2023-11-01")
-    (rev "1.7")
+    (rev "1.8")
     (company "Mariano Luna")
   )
 
@@ -2918,6 +2918,11 @@
     (stroke (width 0) (type default))
     (uuid 135f846c-39bd-468f-b9dd-ad92a15d9d5e)
   )
+
+  (wire (pts (xy 164.465 163.195) (xy 167.005 163.195))
+    (stroke (width 0) (type default))
+    (uuid 13cd2b37-43fa-440a-9b20-d963a6828088)
+  )
   (bus (pts (xy 99.06 27.305) (xy 96.52 24.765))
     (stroke (width 0) (type default))
     (uuid 14334e81-61a0-4b1f-a4ef-b7cb2dd2aed0)
@@ -3183,6 +3188,10 @@
     (uuid 34dfc440-4294-4b1d-ad44-04a910cd7b53)
   )
 
+  (wire (pts (xy 165.1 168.275) (xy 167.005 168.275))
+    (stroke (width 0) (type default))
+    (uuid 361c79e5-4e98-4587-a780-e6a7206ea96c)
+  )
   (wire (pts (xy 240.03 36.195) (xy 240.03 23.495))
     (stroke (width 0) (type default))
     (uuid 36315ef2-bb2c-4b2a-a7f9-33482c4153e4)
@@ -3960,6 +3969,10 @@
   (wire (pts (xy 236.22 106.045) (xy 236.22 116.205))
     (stroke (width 0) (type default))
     (uuid 84d01e81-5af1-4b21-b2d9-d3e2e79ef921)
+  )
+  (wire (pts (xy 164.465 165.735) (xy 167.005 165.735))
+    (stroke (width 0) (type default))
+    (uuid 84e0256c-9955-4652-a3d9-29832af7b15f)
   )
   (bus (pts (xy 71.755 50.8) (xy 69.215 50.8))
     (stroke (width 0) (type default))
@@ -6349,6 +6362,13 @@
       (effects (font (size 1.27 1.27)) (justify left) hide)
     )
   )
+  (global_label "CLK" (shape input) (at 165.1 168.275 180) (fields_autoplaced)
+    (effects (font (size 1.27 1.27)) (justify right))
+    (uuid a6bd6612-8243-4980-9ae0-d131edd74c82)
+    (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 158.5467 168.275 0)
+      (effects (font (size 1.27 1.27)) (justify right) hide)
+    )
+  )
   (global_label "~{IO_07}" (shape input) (at 130.81 85.725 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
     (uuid a7171f32-f383-44b9-8caf-6ef6f1127623)
@@ -6648,6 +6668,33 @@
     (uuid febfdfa5-cd0b-430d-9571-ee97af74447d)
     (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 71.8071 179.07 0)
       (effects (font (size 1.27 1.27)) (justify left) hide)
+    )
+  )
+
+  (symbol (lib_id "Connector:Conn_01x03_Pin") (at 172.085 165.735 180) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (uuid 09695a3b-5ac9-4c01-882c-ce622b9f99ab)
+    (property "Reference" "J6" (at 173.99 164.465 0)
+      (effects (font (size 1.27 1.27)) (justify right))
+    )
+    (property "Value" "CLK" (at 173.99 167.005 0)
+      (effects (font (size 1.27 1.27)) (justify right))
+    )
+    (property "Footprint" "Connector_JST:JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical" (at 172.085 165.735 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "~" (at 172.085 165.735 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid 1cbf5238-b609-455e-bc14-a9a2e0e9ee6e))
+    (pin "2" (uuid 2ee3a507-8a6f-4521-8d54-97aa6cfb80cb))
+    (pin "3" (uuid 90e8f9c2-0d36-4b22-93dd-0f970961cc9f))
+    (instances
+      (project "6502motherboard"
+        (path "/79b045e9-6697-4ebd-8cd3-5e519b22df02"
+          (reference "J6") (unit 1)
+        )
+      )
     )
   )
 
@@ -7233,6 +7280,39 @@
         )
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06/710f29f6-117a-4dcb-a5e3-826b377de52e"
           (reference "#PWR019") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol (lib_id "power:VCC") (at 164.465 165.735 90) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (uuid 3f228b7e-a31f-4044-ab99-452717036b0b)
+    (property "Reference" "#PWR035" (at 168.275 165.735 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "VCC" (at 161.29 165.735 90)
+      (effects (font (size 1.27 1.27)) (justify left))
+    )
+    (property "Footprint" "" (at 164.465 165.735 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 164.465 165.735 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid f88d1686-ddc3-41bc-b324-6ce65f89f60d))
+    (instances
+      (project "6502motherboard"
+        (path "/79b045e9-6697-4ebd-8cd3-5e519b22df02"
+          (reference "#PWR035") (unit 1)
+        )
+      )
+      (project "simple6502"
+        (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
+          (reference "#PWR014") (unit 1)
+        )
+        (path "/c0007eb4-077e-4f77-aad9-8dd15548af06/710f29f6-117a-4dcb-a5e3-826b377de52e"
+          (reference "#PWR039") (unit 1)
         )
       )
     )
@@ -8334,6 +8414,39 @@
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06/710f29f6-117a-4dcb-a5e3-826b377de52e"
           (reference "#PWR029") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol (lib_id "power:GND") (at 164.465 163.195 270) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (uuid b1262b02-cce0-44a3-9e94-d39fd0e54cdd)
+    (property "Reference" "#PWR036" (at 158.115 163.195 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND" (at 161.29 163.195 90)
+      (effects (font (size 1.27 1.27)) (justify right))
+    )
+    (property "Footprint" "" (at 164.465 163.195 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 164.465 163.195 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid 24f043af-2613-47cf-85b9-ddd20fe351ab))
+    (instances
+      (project "6502motherboard"
+        (path "/79b045e9-6697-4ebd-8cd3-5e519b22df02"
+          (reference "#PWR036") (unit 1)
+        )
+      )
+      (project "simple6502"
+        (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
+          (reference "#PWR020") (unit 1)
+        )
+        (path "/c0007eb4-077e-4f77-aad9-8dd15548af06/710f29f6-117a-4dcb-a5e3-826b377de52e"
+          (reference "#PWR040") (unit 1)
         )
       )
     )
