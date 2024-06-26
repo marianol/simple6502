@@ -3550,7 +3550,7 @@
     (uuid 3b41047f-8037-4990-bc9a-0c48a7bd8407)
   )
   (text "Memory Map Decoder\nAddress Space\n0x0000 - 0x7EFF : RAM 32K - 256 bytes\n0x7F00 - 0x7FFF : I/O 256 bytes to decode\n0x8000 - 0xFFFF : ROM 32K\n"
-    (at 20.32 124.46 0)
+    (at 14.605 127 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 485ebdbf-2fb2-40c3-9c9d-d6ba99dc29c7)
   )
@@ -3569,6 +3569,11 @@
   (text "ROM" (at 184.15 16.51 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 76ec6c11-f282-4a5e-bf0c-d14f1215c024)
+  )
+  (text "Address Map				\n0x0000	-	0x7EFF	:	RAM (31.75k)\n0x7F00	-	0x7F0F	:	IO_1 > SLOT 1\n0x7F10	-	0x7F1F	:	IO_2 > SLOT 2\n0x7F20	-	0x7F2F	:	IO_3\n0x7F30	-	0x7F3F	:	IO_4\n0x7F40	-	0x7F4F	:	IO_5\n0x7F50	-	0x7F5F	:	IO_6\n0x7F60	-	0x7F6F	:	IO_7\n0x7F70	-	0x7F7F	:	IO_8 > ACIA\n0x7F80	-	0x7FFF	:	N/A\n0x8000	-	0xFFFF	:	ROM (32K)"
+    (at 66.04 124.46 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 9964f6f2-3cf4-4f72-b4df-008bb552b129)
   )
   (text "I/O Decoder" (at 111.125 125.73 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
