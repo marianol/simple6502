@@ -4373,7 +4373,7 @@
   (symbol (lib_id "Connector:Conn_01x03_Pin") (at 150.495 179.07 90) (mirror x) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 0770fec5-a236-402a-871c-7255171c992c)
-    (property "Reference" "J2" (at 150.495 173.99 90)
+    (property "Reference" "J3" (at 150.495 173.99 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "CLK SEL" (at 150.495 176.53 90)
@@ -4391,7 +4391,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "J2") (unit 1)
+          (reference "J3") (unit 1)
         )
       )
     )
@@ -4400,7 +4400,7 @@
   (symbol (lib_name "R_1") (lib_id "Device:R") (at 40.64 59.69 270) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 0a8e55ea-124a-4da2-8699-360dc70d7ec8)
-    (property "Reference" "R4" (at 40.64 62.23 90)
+    (property "Reference" "R1" (at 40.64 62.23 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "4K7" (at 40.64 59.69 90)
@@ -4417,7 +4417,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "R4") (unit 1)
+          (reference "R1") (unit 1)
         )
       )
     )
@@ -4426,7 +4426,7 @@
   (symbol (lib_id "74xx:74LS30") (at 71.12 139.7 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 0b657e84-6371-4916-8a29-4fb232de9741)
-    (property "Reference" "U4" (at 71.1117 127 0)
+    (property "Reference" "U6" (at 71.1117 127 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "74LS30" (at 71.1117 129.54 0)
@@ -4452,7 +4452,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "U4") (unit 1)
+          (reference "U6") (unit 1)
         )
       )
     )
@@ -4512,7 +4512,7 @@
   (symbol (lib_name "R_1") (lib_id "Device:R") (at 26.67 35.56 180) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 10cdd76f-2620-4de0-870a-28d3140fe7e5)
-    (property "Reference" "R1" (at 24.13 35.56 90)
+    (property "Reference" "R3" (at 24.13 35.56 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "3K3" (at 26.67 35.56 90)
@@ -4529,7 +4529,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "R1") (unit 1)
+          (reference "R3") (unit 1)
         )
       )
     )
@@ -4626,7 +4626,7 @@
   (symbol (lib_id "Memory_RAM:CY62256-70PC") (at 142.24 49.53 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 184bce9e-0bf4-47fa-97c9-14d207dfe553)
-    (property "Reference" "U2" (at 144.4341 24.13 0)
+    (property "Reference" "U3" (at 144.4341 24.13 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "RAM 62256" (at 144.4341 26.67 0)
@@ -4669,7 +4669,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "U2") (unit 1)
+          (reference "U3") (unit 1)
         )
       )
     )
@@ -4728,7 +4728,7 @@
   (symbol (lib_id "Memory_EEPROM:28C256") (at 218.44 54.61 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 32094c25-7d88-42a9-80db-5f2909787794)
-    (property "Reference" "U3" (at 220.6341 24.13 0)
+    (property "Reference" "U4" (at 220.6341 24.13 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "ROM 28C256" (at 220.6341 26.67 0)
@@ -4771,7 +4771,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "U3") (unit 1)
+          (reference "U4") (unit 1)
         )
       )
     )
@@ -4908,7 +4908,7 @@
   (symbol (lib_id "74xx:74HC138") (at 144.78 147.32 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 44a72c2f-ea3a-49d0-bed6-eb54ddd95528)
-    (property "Reference" "U6" (at 146.9741 129.54 0)
+    (property "Reference" "U7" (at 146.9741 129.54 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "74HC138" (at 146.9741 132.08 0)
@@ -4939,7 +4939,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "U6") (unit 1)
+          (reference "U7") (unit 1)
         )
       )
     )
@@ -4948,7 +4948,7 @@
   (symbol (lib_id "Connector_Generic:Conn_01x06") (at 220.98 160.02 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 55d77663-becb-4a82-87c8-89efa4db1a73)
-    (property "Reference" "J7" (at 219.71 152.4 0)
+    (property "Reference" "J4" (at 219.71 152.4 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "FTDI Serial" (at 215.9 170.18 0)
@@ -4969,7 +4969,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "J7") (unit 1)
+          (reference "J4") (unit 1)
         )
       )
     )
@@ -5053,7 +5053,7 @@
   (symbol (lib_name "R_1") (lib_id "Device:R") (at 33.02 57.15 270) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 748ea0dc-03ec-4627-8953-0c8d7e6135fa)
-    (property "Reference" "R3" (at 33.02 59.69 90)
+    (property "Reference" "R5" (at 33.02 59.69 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "4K7" (at 33.02 57.15 90)
@@ -5070,7 +5070,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "R3") (unit 1)
+          (reference "R5") (unit 1)
         )
       )
     )
@@ -5129,7 +5129,7 @@
   (symbol (lib_id "Connector_Generic:Conn_01x02") (at 190.5 154.94 180) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 80a000bf-3a9d-4980-a20e-ec306fb51fc8)
-    (property "Reference" "J8" (at 190.5 146.05 0)
+    (property "Reference" "J2" (at 190.5 146.05 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "USB Power" (at 190.5 148.59 0)
@@ -5146,7 +5146,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "J8") (unit 1)
+          (reference "J2") (unit 1)
         )
       )
     )
@@ -5155,7 +5155,7 @@
   (symbol (lib_id "Connector_Generic:Conn_01x02") (at 129.54 103.505 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 80cebf34-58cf-45b5-b1ed-83442d80cc27)
-    (property "Reference" "J3" (at 132.08 103.505 0)
+    (property "Reference" "J6" (at 132.08 103.505 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "RESET" (at 132.08 106.045 0)
@@ -5172,7 +5172,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "J3") (unit 1)
+          (reference "J6") (unit 1)
         )
       )
     )
@@ -5280,7 +5280,7 @@
   (symbol (lib_id "Interface_UART:MC68B50") (at 231.14 120.015 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 9c94c428-4972-466a-8142-f239d03f47e5)
-    (property "Reference" "U7" (at 233.3341 84.455 0)
+    (property "Reference" "U2" (at 233.3341 84.455 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "MC68B50" (at 233.3341 86.995 0)
@@ -5319,7 +5319,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "U7") (unit 1)
+          (reference "U2") (unit 1)
         )
       )
     )
@@ -5328,7 +5328,7 @@
   (symbol (lib_id "Connector_Generic:Conn_01x02") (at 16.51 69.85 180) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid a0b97fb7-c782-4fcf-90e6-e8b0fb6221bf)
-    (property "Reference" "J1" (at 16.51 60.96 0)
+    (property "Reference" "J9" (at 16.51 60.96 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "~{VP}" (at 16.51 63.5 0)
@@ -5345,7 +5345,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "J1") (unit 1)
+          (reference "J9") (unit 1)
         )
       )
     )
@@ -5354,7 +5354,7 @@
   (symbol (lib_name "R_1") (lib_id "Device:R") (at 33.02 35.56 180) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid ae25a970-050a-4629-8b96-39f8eb101c7d)
-    (property "Reference" "R2" (at 30.48 35.56 90)
+    (property "Reference" "R4" (at 30.48 35.56 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "3K3" (at 33.02 35.56 90)
@@ -5371,7 +5371,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "R2") (unit 1)
+          (reference "R4") (unit 1)
         )
       )
     )
@@ -5595,7 +5595,7 @@
   (symbol (lib_name "R_1") (lib_id "Device:R") (at 40.64 74.93 270) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid ef6f2eaa-f87b-46ba-a904-ccbcb1341027)
-    (property "Reference" "R5" (at 40.64 77.47 90)
+    (property "Reference" "R2" (at 40.64 77.47 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "4K7" (at 40.64 74.93 90)
@@ -5612,7 +5612,7 @@
     (instances
       (project "simple6502"
         (path "/c0007eb4-077e-4f77-aad9-8dd15548af06"
-          (reference "R5") (unit 1)
+          (reference "R2") (unit 1)
         )
       )
     )
