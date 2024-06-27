@@ -5,6 +5,12 @@
   )
 
   (paper "A4")
+  (title_block
+    (title "Simple 6502 - All in One")
+    (date "2024-06-26")
+    (rev "1.5")
+  )
+
   (layers
     (0 "F.Cu" signal)
     (31 "B.Cu" signal)
@@ -3632,6 +3638,9 @@
   )
   (gr_text "A7" (at 85.09 51.21) (layer "F.SilkS") (tstamp bb03c647-ab9e-4b1a-9e40-8d043e144b49)
     (effects (font (size 0.8 1) (thickness 0.15) bold) (justify left bottom))
+  )
+  (gr_text "Rev: ${REVISION}" (at 148.75 139.64 90) (layer "F.SilkS") (tstamp c6eacfd8-b797-40a6-b825-4ac40c999c20)
+    (effects (font (size 1 1) (thickness 0.2) bold) (justify left bottom))
   )
   (gr_text "D7" (at 105.28 57.68) (layer "F.SilkS") (tstamp cbf3ce8e-ceb9-4593-8c8c-adaa4203a606)
     (effects (font (size 0.8 1) (thickness 0.15) bold) (justify left bottom))
