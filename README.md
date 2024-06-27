@@ -37,7 +37,7 @@ Exposed in the connector are:
 - Address lines A0..A15
 - Data lines D0..D7
 - Clock $\phi$ 2
-- $\overline{IO\textunderscoreCS}$, $\overline{RAM\textunderscoreCS}$ , and $\overline{ROM\textunderscoreCS}$ chip select lines
+- $\overline{IO{\textunderscore}CS}$, $\overline{RAM{\textunderscore}CS}$ , and $\overline{ROM{\textunderscore}CS}$ chip select lines
 - $\overline{RD}$ and $\overline{WR}$ 
 - $\overline{RESET}$
 - Pin 27 is the slot IO select line. For Slot 1 is $\overline{IO\textunderscore01}$ mapping it to 0x7F00, and for Slot 2 is $\overline{IO\textunderscore02}$ mapping it to 0x7F10.
