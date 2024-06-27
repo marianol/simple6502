@@ -46,5 +46,8 @@ Exposed in the connector are:
 - VCC and GND, this are set so if you insert a card backwards you will not short them.
 - Pins 21, 24, 33, and 34 are only connected between the 2 slots and have no connection to the mainboard 
 
+## Licence
 
+Licenced under CERN Open Hardware licence CERN-OHL-S v2, see CERN-OHL-S-v2.txt
 
+(c) 2023-2024 Mariano Luna. All rights reserved
