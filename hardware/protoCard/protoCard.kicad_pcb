@@ -5,6 +5,12 @@
   )
 
   (paper "A4")
+  (title_block
+    (title "6502 ProtoCard")
+    (date "2024-06-26")
+    (rev "1.2")
+  )
+
   (layers
     (0 "F.Cu" signal)
     (31 "B.Cu" signal)
@@ -26868,6 +26874,9 @@
   )
   (gr_text "~{RAM_CS}" (at 91.02 107.82 30) (layer "F.SilkS") (tstamp 14cc9b28-c62d-4867-930b-1a2057961fc4)
     (effects (font (size 1 0.6) (thickness 0.15)) (justify left bottom))
+  )
+  (gr_text "Rev: ${REVISION}" (at 152.09 98.81 90) (layer "F.SilkS") (tstamp 1e709866-4599-4de6-ab71-d4758978a286)
+    (effects (font (size 1 1) (thickness 0.15)) (justify left bottom))
   )
   (gr_text "VCC" (at 55.1 115.45) (layer "F.SilkS") (tstamp 226db8c2-8577-4ec1-8dd8-05d236bc16d7)
     (effects (font (size 1 0.8) (thickness 0.15)) (justify left bottom))
