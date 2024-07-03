@@ -12,6 +12,8 @@ For the serial interface I settled on the Motorolla 68B50 ACIA, just because I h
 The jumper J2 next to the header allows you to run the board with the USB 5v rail from the FTDI. IMPORTANT!! This overrides the power switch SW2 and there is no protection built into the board so you should not connect this jumper at the same time as the 5V barrel J7 or the AUX Power header J8.
 The bus Slot connectors have pin 27 tied to IO_1 and IO_2 respectively allowing to design expansion cards that can be mapped into memory based on where they are plugged. You still have access to IO_3 to IO_7 in case you want to use those. The Expansion Port J1 is intended to be used with a 40 pin ribbon for ease of development of prototype boards.
 
+![Simple6502 Computer](https://github.com/marianol/simple6502/blob/main/hardware/schematics/simple6502_PCB.png?raw=true)
+
 ## Memory Map
 
 Momory Decocing is done using gates for RAM, ROM and IO. IO_CS line is sent to a 3-8 decoder to get 8 individual IO select lines.
