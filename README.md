@@ -14,6 +14,10 @@ The bus Slot connectors have pin 27 tied to IO_1 and IO_2 respectively allowing 
 
 ![Simple6502 Computer](https://github.com/marianol/simple6502/blob/main/hardware/schematics/simple6502_PCB.png?raw=true)
 
+I made the PCBs for Revision 1.6 on PCBWay. 
+![Simple6502 PCB](https://github.com/marianol/simple6502/blob/main/hardware/gallery/simple6502_PCB.jpg?raw=true)
+
+
 ## Memory Map
 
 Momory Decocing is done using gates for RAM, ROM and IO. IO_CS line is sent to a 3-8 decoder to get 8 individual IO select lines.
