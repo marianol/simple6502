@@ -34,5 +34,5 @@ filename="${file%.*}"
 echo "Compiling $filename."
 ca65 -vvv --cpu 65C02 -l ./out/"$filename".lst -o ./out/"$filename".o "$1"
 echo "Linking $filename using $ldconfig memory configuration."
-ld65 -o out/"$filename".bin -C "$ldconfig" out/"$filename".o
+ld65 -C "$ldconfig" out/"$filename".o -o out/"$filename".bin -Ln out/"$filename".lbl
 echo "Complete.."
