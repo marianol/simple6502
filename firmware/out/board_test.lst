@@ -1,0 +1,158 @@
+ca65 V2.19 - Git a861d840
+Main file   : ./board_test.s
+Current file: ./board_test.s
+
+000000r 1               ; Board test ROM for the simple6502
+000000r 1               ; Written by Mariano Luna, 2024
+000000r 1               ; License: BSD-3-Clause
+000000r 1               ; https://opensource.org/license/bsd-3-clause
+000000r 1               
+000000r 1               .setcpu "65C02"           ; Thats what we got
+000000r 1               .debuginfo +
+000000r 1               
+000000r 1               .define VERSION "0.1.0"   ; Define the version number
+000000r 1               
+000000r 1               .include "defines_simple6502.s" ; Include HW Constants and Labels
+000000r 2               ; Herdware for the simple6502 SBC board
+000000r 2               ;
+000000r 2               ; This file has the common labels, variables and costants that define the
+000000r 2               ; herdware of my simple6502 SBC https://github.com/marianol/simple6502/
+000000r 2               ; is ment to be included in source files and keep hardware related data
+000000r 2               ; separated from the main assembly code.
+000000r 2               
+000000r 2               ; simple6502 SBC
+000000r 2               ; Memory Map Address Space
+000000r 2               ; 0x0000 - 0x7EFF : RAM 32K - 256 bytes (31.75K)
+000000r 2               ; 0x7F00 - 0x7FFF : I/O 256 bytes decoded to 8 IO lines
+000000r 2               ; 0x8000 - 0xFFFF : ROM 32K
+000000r 2               
+000000r 2               ; I/O Space
+000000r 2               ;  0x7F00 - 0x7F0F : IO_1 > SLOT 1
+000000r 2               ;  0x7F10 - 0x7F1F : IO_2 > SLOT 2
+000000r 2               ;  0x7F20 - 0x7F2F : IO_3
+000000r 2               ;  0x7F30 - 0x7F3F : IO_4
+000000r 2               ;  0x7F40 - 0x7F4F : IO_5
+000000r 2               ;  0x7F50 - 0x7F5F : IO_6
+000000r 2               ;  0x7F60 - 0x7F6F : IO_7
+000000r 2               ;  0x7F70 - 0x7F7F : IO_8 > ACIA
+000000r 2               ;  0x7F80 - 0x7FFF : This section is not decoded 127 bytes
+000000r 2               
+000000r 2               IO_1    = $7F00 ; Slot #1
+000000r 2               IO_2    = $7F10 ; Slot #2
+000000r 2               IO_3    = $7F20 ; Reserved for VIA #1 not on board
+000000r 2               IO_4    = $7F30 ; Available
+000000r 2               IO_5    = $7F40 ; Available
+000000r 2               IO_6    = $7F50 ; Available
+000000r 2               IO_7    = $7F60 ; Available
+000000r 2               IO_8    = $7F70 ; MC68B50 on board ACIA
+000000r 2               
+000000r 2               ; -----------
+000000r 2               ; ACIA MC68B50
+000000r 2               ; The simple6502 has an serial interface on board at IO_8
+000000r 2               ACIA_BASE     = IO_8
+000000r 2               ACIA_STATUS   = ACIA_BASE       ; Read Only RS 0 + R
+000000r 2               ACIA_CONTROL  = ACIA_BASE       ; Write Only RS 0 + W
+000000r 2               ACIA_DATA     = ACIA_BASE + 8   ; RS 1 + R/W > RX/TX
+000000r 2               
+000000r 2               ; ACIA Helpers
+000000r 2               
+000000r 2               ; Constants
+000000r 2               ACIA_TDRE       = %00000010    ; bitmask for TRDE
+000000r 2               ACIA_RDRF       = %00000001    ; bitmask for RDRF
+000000r 2               ACIA_RESET      = %00000011    ; 6850 reset
+000000r 2               
+000000r 2               ; ACIA Preset Configurations
+000000r 2               ; This are intended to simplify config of the CTRL register
+000000r 2               ; the onboard ACIA is driven by the main clock (CLK) @ 1.8432Mhz
+000000r 2               ACIA_CFG_115    = %00010101    ; 8-N-1, 115200bps, no IRQ - /16 CLK
+000000r 2               ACIA_CFG_28     = %00010110    ; 8-N-1, 28800bps, no IRQ - /64 CLK
+000000r 2               ACIA_CFG_28I    = %10010110    ; 8-N-1, 28800bps, IRQ - /64 CLK
+000000r 2               
+000000r 2               ; The 68B50 Control register is as follows:
+000000r 2               ; - Bit 0-1: Config clock Divider & Reset > 00: ÷1, 01: ÷16, 10: ÷64, 11: Master reset
+000000r 2               ; - Bit 2-4: Config bit length, parity & stop >
+000000r 2               ; - Bit 5-6: TX control bits
+000000r 2               ;               > 00: RTSB low, TDRE IRQ disabled
+000000r 2               ;               > 01: RTSB low, TDRE IRQ enabled
+000000r 2               ;               > 10: RTSB high, TDRE IRQ disabled
+000000r 2               ;               > 11: RTSB low, transmits brake level, TDRE disabled
+000000r 2               ; - Bit 7: RX IRQ 0 Disabled / 1 Enabled
+000000r 2               
+000000r 2               
+000000r 2               ; 6522 VIA
+000000r 2               ; The VIA is not onboard in Rev 1.6 it
+000000r 2               ; but reserving this I/O for the main VIA
+000000r 2               VIA1_BASE   = IO_3
+000000r 2               VIA1_PORTB  = VIA1_BASE         ; $7F20
+000000r 2               VIA1_PORTA  = VIA1_BASE + 1     ; $7F21
+000000r 2               VIA1_DDRB   = VIA1_BASE + 2     ; $7F22
+000000r 2               VIA1_DDR    = VIA1_BASE + 3     ; $7F23
+000000r 2               VIA1_T1CL   = VIA1_BASE + 4     ; $7F24 Timer 1 Counter (low byte)
+000000r 2               VIA1_T1CH   = VIA1_BASE + 5     ; $7F25 Timer 1 Counter (high byte)
+000000r 2               VIA1_ACR    = VIA1_BASE + 11    ; $7F2B Auxiliary Control register @
+000000r 2               VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
+000000r 2               VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
+000000r 2               
+000000r 2               ; Interrupt Flag Register (IFR) Reference
+000000r 2               ; BIT   |  0  |  1  |  2       |  3  |  4  |   5    |   6    |  7  |
+000000r 2               ; Desc  | CA2 | CA1 | Shift    | CB2 | CB1 | Timer2 | Timer2 | IRQ |
+000000r 2               ;                     Register
+000000r 2               
+000000r 2               
+000000r 2               ; ### ZeroPage Variables ###
+000000r 2               ZP_START        = $00
+000000r 2               
+000000r 2               ; ### Useful Constants ###
+000000r 2               ; ASCII
+000000r 2               CR      = $0D
+000000r 2               LF      = $0A
+000000r 2               BS      = $08
+000000r 2               DEL     = $7F
+000000r 2               SPACE   = $20
+000000r 2               ESC     = $1B
+000000r 2               NULL    = $00
+000000r 2               
+000000r 1               
+000000r 1               ; -- ROM START --
+000000r 1               ;.org $8000
+000000r 1               
+000000r 1               ; JUMP Table
+000000r 1               .segment "HEADER"
+000000r 1  62 6F 61 72    .byte "board_test Ver: "
+000004r 1  64 5F 74 65  
+000008r 1  73 74 20 56  
+000010r 1  30 2E 31 2E    .byte VERSION
+000014r 1  30           
+000015r 1               
+000015r 1               ; BIOS Start
+000015r 1               .segment "BIOS"
+000000r 1               
+000000r 1               ; Reset Start
+000000r 1               reset:
+000000r 1  78             sei ;disable interrupts
+000001r 1  D8             cld ;turn decimal mode off
+000002r 1  A2 FF          ldx #$FF
+000004r 1  9A             txs ; set the stack start
+000005r 1                 ; do nothing
+000005r 1                 do_nothing:
+000005r 1  EA               nop
+000006r 1  4C rr rr         jmp do_nothing
+000009r 1               
+000009r 1               
+000009r 1               ; IRQ Handler
+000009r 1               irq_handler:
+000009r 1  EA               nop
+00000Ar 1  40               rti
+00000Br 1               
+00000Br 1               ; NMI Handler Vector
+00000Br 1               nmi_handler:
+00000Br 1  EA               nop
+00000Cr 1  40               rti
+00000Dr 1               
+00000Dr 1               ; -- VECTORS --
+00000Dr 1               .segment "RESETVECTORS"
+000000r 1                 ;.org $fffa
+000000r 1  rr rr          .word nmi_handler ; NMI
+000002r 1  rr rr          .word reset       ; RESET
+000004r 1  rr rr          .word irq_handler ; IRQ/BRK
+000004r 1               

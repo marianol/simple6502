@@ -4,6 +4,7 @@
 ; https://opensource.org/license/bsd-3-clause
 
 .setcpu "65C02"           ; Thats what we got
+.debuginfo +
 
 .define VERSION "0.1.0"   ; Define the version number
 
@@ -22,25 +23,25 @@
 
 ; Reset Start 
 reset:
-  sei ;disable interrupts 
-  cld ;turn decimal mode off
-  ldx #$FF
-  txs ; set the stack start
+  sei               ; 78      disable interrupts 
+  cld               ; D8      turn decimal mode off
+  ldx #$FF          ; A2 FF
+  txs               ; 9A      set the stack start
   ; do nothing
-  do_nothing:
-    nop
-    jmp do_nothing
+  do_nothing:   
+    nop             ; EA
+    jmp do_nothing  ; 4C 1A 80
 
 
 ; IRQ Handler 
 irq_handler:
-    nop
-    rti
+    nop       ; EA
+    rti       ; 40 
 
 ; NMI Handler Vector 
 nmi_handler:
-    nop
-    rti
+    nop       ; EA
+    rti       ; 40
 
 ; -- VECTORS --
 .segment "RESETVECTORS"
