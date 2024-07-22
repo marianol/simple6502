@@ -86,6 +86,12 @@ VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 
 ; ### ZeroPage Variables ###
 ZP_START        = $00
+PTR_RD_RX_BUF   = $E5 ; RX Read Buffer Pointer
+PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
+PTR_TX          = $E7 ; Transmit String Pointer
+PTR_TX_L        = $E7 ; LO Byte
+PTR_TX_H        = $E8 ; HI Byte
+
 
 ; ### Useful Constants ###
 ; ASCII 
