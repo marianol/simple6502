@@ -1,0 +1,294 @@
+ca65 V2.19 - Git a861d840
+Main file   : ./BIOS.s
+Current file: ./BIOS.s
+
+000000r 1               ; simple6502 BIOS ROM f
+000000r 1               ; Written by Mariano Luna, 2024
+000000r 1               ; License: BSD-3-Clause
+000000r 1               ; https://opensource.org/license/bsd-3-clause
+000000r 1               
+000000r 1               .setcpu "65C02"           ; Thats what we got
+000000r 1               .debuginfo +
+000000r 1               
+000000r 1               .define VERSION "0.0.1"   ; Define the version number
+000000r 1               
+000000r 1               .include "defines_simple6502.s" ; Include HW Constants and Labels
+000000r 2               ; Herdware for the simple6502 SBC board
+000000r 2               ;
+000000r 2               ; This file has the common labels, variables and costants that define the
+000000r 2               ; herdware of my simple6502 SBC https://github.com/marianol/simple6502/
+000000r 2               ; is ment to be included in source files and keep hardware related data
+000000r 2               ; separated from the main assembly code.
+000000r 2               
+000000r 2               ; simple6502 SBC
+000000r 2               ; Memory Map Address Space
+000000r 2               ; 0x0000 - 0x7EFF : RAM 32K - 256 bytes (31.75K)
+000000r 2               ; 0x7F00 - 0x7FFF : I/O 256 bytes decoded to 8 IO lines
+000000r 2               ; 0x8000 - 0xFFFF : ROM 32K
+000000r 2               
+000000r 2               ; I/O Space
+000000r 2               ;  0x7F00 - 0x7F0F : IO_1 > SLOT 1
+000000r 2               ;  0x7F10 - 0x7F1F : IO_2 > SLOT 2
+000000r 2               ;  0x7F20 - 0x7F2F : IO_3
+000000r 2               ;  0x7F30 - 0x7F3F : IO_4
+000000r 2               ;  0x7F40 - 0x7F4F : IO_5
+000000r 2               ;  0x7F50 - 0x7F5F : IO_6
+000000r 2               ;  0x7F60 - 0x7F6F : IO_7
+000000r 2               ;  0x7F70 - 0x7F7F : IO_8 > ACIA
+000000r 2               ;  0x7F80 - 0x7FFF : This section is not decoded 127 bytes
+000000r 2               
+000000r 2               IO_1    = $7F00 ; Slot #1
+000000r 2               IO_2    = $7F10 ; Slot #2
+000000r 2               IO_3    = $7F20 ; Reserved for VIA #1 not on board
+000000r 2               IO_4    = $7F30 ; Available
+000000r 2               IO_5    = $7F40 ; Available
+000000r 2               IO_6    = $7F50 ; Available
+000000r 2               IO_7    = $7F60 ; Available
+000000r 2               IO_8    = $7F70 ; MC68B50 on board ACIA
+000000r 2               
+000000r 2               ; -----------
+000000r 2               ; ACIA MC68B50
+000000r 2               ; The simple6502 has an serial interface on board at IO_8
+000000r 2               ; RS is tied to A0 and CS0 is tied to A1
+000000r 2               ACIA_BASE     = IO_8
+000000r 2               ACIA_STATUS   = ACIA_BASE + 2   ; Read Only RS 0 + R
+000000r 2               ACIA_CONTROL  = ACIA_BASE + 2   ; Write Only RS 0 + W
+000000r 2               ACIA_DATA     = ACIA_BASE + 3   ; RS 1 + R/W > RX/TX
+000000r 2               
+000000r 2               ; ACIA Helpers
+000000r 2               
+000000r 2               ; Constants
+000000r 2               ACIA_TDRE       = %00000010    ; bitmask for TRDE
+000000r 2               ACIA_RDRF       = %00000001    ; bitmask for RDRF
+000000r 2               ACIA_RESET      = %00000011    ; 6850 reset
+000000r 2               
+000000r 2               ; ACIA Preset Configurations
+000000r 2               ; This are intended to simplify config of the CTRL register
+000000r 2               ; the onboard ACIA is driven by the main clock (CLK) @ 1.8432Mhz
+000000r 2               ACIA_CFG_115    = %00010101    ; 8-N-1, 115200bps, no IRQ - /16 CLK
+000000r 2               ACIA_CFG_28     = %00010110    ; 8-N-1, 28800bps, no IRQ - /64 CLK
+000000r 2               ACIA_CFG_28I    = %10010110    ; 8-N-1, 28800bps, IRQ - /64 CLK
+000000r 2               
+000000r 2               ; The 68B50 Control register is as follows:
+000000r 2               ; - Bit 0-1: Config clock Divider & Reset > 00: ÷1, 01: ÷16, 10: ÷64, 11: Master reset
+000000r 2               ; - Bit 2-4: Config bit length, parity & stop >
+000000r 2               ; - Bit 5-6: TX control bits
+000000r 2               ;               > 00: RTSB low, TDRE IRQ disabled
+000000r 2               ;               > 01: RTSB low, TDRE IRQ enabled
+000000r 2               ;               > 10: RTSB high, TDRE IRQ disabled
+000000r 2               ;               > 11: RTSB low, transmits brake level, TDRE disabled
+000000r 2               ; - Bit 7: RX IRQ 0 Disabled / 1 Enabled
+000000r 2               
+000000r 2               
+000000r 2               ; 6522 VIA
+000000r 2               ; The VIA is not onboard in Rev 1.6 it
+000000r 2               ; but reserving this I/O for the main VIA
+000000r 2               VIA1_BASE   = IO_3
+000000r 2               VIA1_PORTB  = VIA1_BASE         ; $7F20
+000000r 2               VIA1_PORTA  = VIA1_BASE + 1     ; $7F21
+000000r 2               VIA1_DDRB   = VIA1_BASE + 2     ; $7F22
+000000r 2               VIA1_DDR    = VIA1_BASE + 3     ; $7F23
+000000r 2               VIA1_T1CL   = VIA1_BASE + 4     ; $7F24 Timer 1 Counter (low byte)
+000000r 2               VIA1_T1CH   = VIA1_BASE + 5     ; $7F25 Timer 1 Counter (high byte)
+000000r 2               VIA1_ACR    = VIA1_BASE + 11    ; $7F2B Auxiliary Control register @
+000000r 2               VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
+000000r 2               VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
+000000r 2               
+000000r 2               ; Interrupt Flag Register (IFR) Reference
+000000r 2               ; BIT   |  0  |  1  |  2       |  3  |  4  |   5    |   6    |  7  |
+000000r 2               ; Desc  | CA2 | CA1 | Shift    | CB2 | CB1 | Timer2 | Timer2 | IRQ |
+000000r 2               ;                     Register
+000000r 2               
+000000r 2               
+000000r 2               ; ### ZeroPage Variables ###
+000000r 2               ZP_START        = $00
+000000r 2               PTR_RD_RX_BUF   = $E5 ; RX Read Buffer Pointer
+000000r 2               PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
+000000r 2               PTR_TX          = $E7 ; Transmit String Pointer
+000000r 2               PTR_TX_L        = $E7 ; LO Byte
+000000r 2               PTR_TX_H        = $E8 ; HI Byte
+000000r 2               
+000000r 2               
+000000r 2               ; ### Useful Constants ###
+000000r 2               ; ASCII
+000000r 2               CR      = $0D
+000000r 2               LF      = $0A
+000000r 2               BS      = $08
+000000r 2               DEL     = $7F
+000000r 2               SPACE   = $20
+000000r 2               ESC     = $1B
+000000r 2               NULL    = $00
+000000r 2               
+000000r 1               
+000000r 1               ; -- ROM START --
+000000r 1               ;.org $8000
+000000r 1               
+000000r 1               ; JUMP Table
+000000r 1               .segment "HEADER"
+000000r 1               
+000000r 1               
+000000r 1               ; BIOS Start
+000000r 1               .segment "BIOS"
+000000r 1  73 69 6D 70    .byte "simple6502 BIOS Ver: "
+000004r 1  6C 65 36 35  
+000008r 1  30 32 20 42  
+000015r 1  30 2E 30 2E    .byte VERSION
+000019r 1  31           
+00001Ar 1               
+00001Ar 1               ; Reset Start
+00001Ar 1               reset:
+00001Ar 1  78             sei               ; 78      disable interrupts
+00001Br 1  D8             cld               ; D8      turn decimal mode off
+00001Cr 1  A2 FF          ldx #$FF          ; A2 FF
+00001Er 1  9A             txs               ; 9A      set the stack start
+00001Fr 1  20 rr rr       jsr post          ; do a POST
+000022r 1  20 rr rr       jsr init_serial   ; init ACIA # IO_8
+000025r 1                 ; Print startup message
+000025r 1  A9 rr          lda #<startupMessage
+000027r 1  85 E7          sta PTR_TX
+000029r 1  A9 rr          lda #>startupMessage
+00002Br 1  85 E8          sta PTR_TX_H
+00002Dr 1  20 rr rr       jsr serial_out_str
+000030r 1                 do_nothing:
+000030r 1  EA               nop             ; EA
+000031r 1  A9 FF            lda #$FF
+000033r 1  8D FF 55         sta $55FF
+000036r 1  4C rr rr         jmp do_nothing  ; 4C 1A 80
+000039r 1               
+000039r 1               
+000039r 1               ; ### Subrutines ###
+000039r 1               
+000039r 1               ; TX A Register as ASCII HEX byte
+000039r 1               ; Need to check this routine, can be optimized
+000039r 1               serial_out_hex:
+000039r 1  48             pha
+00003Ar 1  4A             lsr       ; process the high nibble
+00003Br 1  4A             lsr
+00003Cr 1  4A             lsr
+00003Dr 1  4A             lsr
+00003Er 1  29 0F          and #$0F
+000040r 1  09 30          ora #$30
+000042r 1  C9 3A          cmp #$3A
+000044r 1  90 02          bcc @WRT   ; A is less so its less than 9 we are set
+000046r 1  69 06          adc #$06   ; A is more than 9 convert to letter
+000048r 1               @WRT:
+000048r 1  20 rr rr       jsr serial_out
+00004Br 1  68             pla
+00004Cr 1  29 0F          and #$0F  ; process the low nibble
+00004Er 1  09 30          ora #$30
+000050r 1  C9 3A          cmp #$3A
+000052r 1  90 02          bcc @WRT2
+000054r 1  69 06          adc #$06
+000056r 1               @WRT2:
+000056r 1  20 rr rr       jsr serial_out
+000059r 1  60             rts
+00005Ar 1               
+00005Ar 1               
+00005Ar 1               ; Power on Self Test
+00005Ar 1               ; first thing will run on boot
+00005Ar 1               post:
+00005Ar 1                 ; test RAM
+00005Ar 1  EA             nop
+00005Br 1                 ; test ROM
+00005Br 1  EA             nop
+00005Cr 1                 ; test ACIA
+00005Cr 1  EA             nop
+00005Dr 1  60             rts
+00005Er 1               
+00005Er 1               ; init_serial
+00005Er 1               ; Reset and set ACIA config. Init the RX buffer pointer
+00005Er 1               init_serial:
+00005Er 1  A9 03          lda #ACIA_RESET
+000060r 1  8D 72 7F       sta ACIA_CONTROL
+000063r 1  A9 16          lda #ACIA_CFG_28    ; 28800 8,N,1
+000065r 1  8D 72 7F       sta ACIA_CONTROL
+000068r 1                 ; Init the RX buffer pointers
+000068r 1  A9 00          lda #0
+00006Ar 1  85 E5          sta PTR_RD_RX_BUF
+00006Cr 1  85 E6          sta PTR_WR_RX_BUF
+00006Er 1  60             rts
+00006Fr 1               
+00006Fr 1               ; TX A Register via Serial
+00006Fr 1               ; Sends the char in A out the ACIA RS232
+00006Fr 1               serial_out:
+00006Fr 1  48             pha
+000070r 1                 pool_acia: ; pulling mode until ready to TX
+000070r 1  AD 72 7F         lda ACIA_STATUS
+000073r 1  29 02            and #ACIA_TDRE     ; looking at Bit 1 TX Data Register Empty > High = Empty
+000075r 1  F0 F9            beq pool_acia     ; pooling loop if empty
+000077r 1  68             pla
+000078r 1  8D 73 7F       sta ACIA_DATA       ; output char in A to TDRE
+00007Br 1  60             rts
+00007Cr 1               
+00007Cr 1               ; Serial Receive
+00007Cr 1               ; Checks if the ACIA has RX a characted and put it in A
+00007Cr 1               ; if a byte was received sets the carry flag, if not it clears it
+00007Cr 1               serial_in:
+00007Cr 1  AD 72 7F       lda ACIA_STATUS
+00007Fr 1  29 01          and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
+000081r 1  F0 08          beq @no_data      ; nothing in the RX Buffer
+000083r 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
+000086r 1  20 rr rr       jsr serial_out    ; echo back
+000089r 1  38             sec
+00008Ar 1  60             rts
+00008Br 1               @no_data:
+00008Br 1  18             clc
+00008Cr 1  60             rts
+00008Dr 1               
+00008Dr 1               ; TX a string
+00008Dr 1               ; Sends the a null terminated string via RS232
+00008Dr 1               ; - PTR_TX is a pointer to the string memory location
+00008Dr 1               ; - Y register is not preserved
+00008Dr 1               serial_out_str:
+00008Dr 1  A0 00          ldy #0
+00008Fr 1                 @loop:
+00008Fr 1  B1 E7            lda (PTR_TX),y
+000091r 1  F0 06            beq @null_found
+000093r 1  20 rr rr         jsr serial_out
+000096r 1  C8               iny
+000097r 1  80 F6            bra @loop
+000099r 1                 @null_found:
+000099r 1  60             rts
+00009Ar 1               
+00009Ar 1               ; ### Helper Routines ###
+00009Ar 1               ; Send CRLF > $0D,$0A
+00009Ar 1               ; does not preserve A
+00009Ar 1               out_crlf:
+00009Ar 1  A9 0D          lda #CR
+00009Cr 1  20 rr rr       jsr serial_out
+00009Fr 1  A9 0A          lda #LF
+0000A1r 1  20 rr rr       jsr serial_out
+0000A4r 1  60             rts
+0000A5r 1               
+0000A5r 1               ; ROM Data
+0000A5r 1               ; Startup Messages
+0000A5r 1               startupMessage:
+0000A5r 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
+0000A9r 1  23 20 53 69  
+0000ADr 1  6D 70 6C 65  
+0000BEr 1  30 2E 30 2E    .byte VERSION
+0000C2r 1  31           
+0000C3r 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
+0000C7r 1  0D 0A 00       .byte $0D,$0A,$00
+0000CAr 1               
+0000CAr 1               
+0000CAr 1               
+0000CAr 1               ; ### Interrupt Handlers ###
+0000CAr 1               
+0000CAr 1               ; IRQ Handler
+0000CAr 1               irq_handler:
+0000CAr 1  EA               nop       ; EA
+0000CBr 1  40               rti       ; 40
+0000CCr 1               
+0000CCr 1               ; NMI Handler Vector
+0000CCr 1               nmi_handler:
+0000CCr 1  EA               nop       ; EA
+0000CDr 1  40               rti       ; 40
+0000CEr 1               
+0000CEr 1               ; -- VECTORS --
+0000CEr 1               .segment "RESETVECTORS"
+000000r 1                 ;.org $fffa
+000000r 1  rr rr          .word nmi_handler ; NMI
+000002r 1  rr rr          .word reset       ; RESET
+000004r 1  rr rr          .word irq_handler ; IRQ/BRK
+000004r 1               

@@ -36,7 +36,12 @@ reset:
   lda #>startupMessage
   sta PTR_TX_H
   jsr serial_out_str
-  nop
+  do_nothing:   
+    nop             ; EA
+    lda #$FF
+    sta $55FF
+    jmp do_nothing  ; 4C 1A 80
+
 
 ; ### Subrutines ### 
 
@@ -44,24 +49,24 @@ reset:
 ; Need to check this routine, can be optimized
 serial_out_hex:
   pha
-  lsr       ; process the first nibble
+  lsr       ; process the high nibble
   lsr
   lsr
   lsr
   and #$0F
   ora #$30
   cmp #$3A 
-  bcc WRT   ; A is less so its less than 9 we are set
-  adc #$06
-WRT
+  bcc @WRT   ; A is less so its less than 9 we are set
+  adc #$06   ; A is more than 9 convert to letter
+@WRT:
   jsr serial_out
   pla
-  and #$0F
+  and #$0F  ; process the low nibble
   ora #$30 
   cmp #$3A 
-  bcc WRT2
+  bcc @WRT2
   adc #$06
-WRT2
+@WRT2:
   jsr serial_out
   rts
 
