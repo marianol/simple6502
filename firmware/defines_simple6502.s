@@ -34,10 +34,11 @@ IO_8    = $7F70 ; MC68B50 on board ACIA
 ; -----------
 ; ACIA MC68B50
 ; The simple6502 has an serial interface on board at IO_8
+; RS is tied to A0 and CS0 is tied to A1
 ACIA_BASE     = IO_8
-ACIA_STATUS   = ACIA_BASE       ; Read Only RS 0 + R 
-ACIA_CONTROL  = ACIA_BASE       ; Write Only RS 0 + W
-ACIA_DATA     = ACIA_BASE + 8   ; RS 1 + R/W > RX/TX
+ACIA_STATUS   = ACIA_BASE + 2   ; Read Only RS 0 + R 
+ACIA_CONTROL  = ACIA_BASE + 2   ; Write Only RS 0 + W
+ACIA_DATA     = ACIA_BASE + 3   ; RS 1 + R/W > RX/TX
 
 ; ACIA Helpers
 
