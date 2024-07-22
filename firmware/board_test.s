@@ -27,6 +27,8 @@ reset:
   cld               ; D8      turn decimal mode off
   ldx #$FF          ; A2 FF
   txs               ; 9A      set the stack start
+  
+  cli               ; 58      enable interrupts 
   ; do nothing
   do_nothing:   
     nop             ; EA

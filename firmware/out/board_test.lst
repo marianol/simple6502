@@ -101,6 +101,12 @@ Current file: ./board_test.s
 000000r 2               
 000000r 2               ; ### ZeroPage Variables ###
 000000r 2               ZP_START        = $00
+000000r 2               PTR_RD_RX_BUF   = $E5 ; RX Read Buffer Pointer
+000000r 2               PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
+000000r 2               PTR_TX          = $E7 ; Transmit String Pointer
+000000r 2               PTR_TX_L        = $E7 ; LO Byte
+000000r 2               PTR_TX_H        = $E8 ; HI Byte
+000000r 2               
 000000r 2               
 000000r 2               ; ### Useful Constants ###
 000000r 2               ; ASCII
@@ -129,28 +135,30 @@ Current file: ./board_test.s
 000000r 1               
 000000r 1               ; Reset Start
 000000r 1               reset:
-000000r 1  78             sei ;disable interrupts
-000001r 1  D8             cld ;turn decimal mode off
-000002r 1  A2 FF          ldx #$FF
-000004r 1  9A             txs ; set the stack start
-000005r 1                 ; do nothing
-000005r 1                 do_nothing:
-000005r 1  EA               nop
-000006r 1  4C rr rr         jmp do_nothing
-000009r 1               
-000009r 1               
-000009r 1               ; IRQ Handler
-000009r 1               irq_handler:
-000009r 1  EA               nop
-00000Ar 1  40               rti
-00000Br 1               
-00000Br 1               ; NMI Handler Vector
-00000Br 1               nmi_handler:
-00000Br 1  EA               nop
-00000Cr 1  40               rti
-00000Dr 1               
-00000Dr 1               ; -- VECTORS --
-00000Dr 1               .segment "RESETVECTORS"
+000000r 1  78             sei               ; 78      disable interrupts
+000001r 1  D8             cld               ; D8      turn decimal mode off
+000002r 1  A2 FF          ldx #$FF          ; A2 FF
+000004r 1  9A             txs               ; 9A      set the stack start
+000005r 1               
+000005r 1  58             cli               ; 58      enable interrupts
+000006r 1                 ; do nothing
+000006r 1                 do_nothing:
+000006r 1  EA               nop             ; EA
+000007r 1  4C rr rr         jmp do_nothing  ; 4C 1A 80
+00000Ar 1               
+00000Ar 1               
+00000Ar 1               ; IRQ Handler
+00000Ar 1               irq_handler:
+00000Ar 1  EA               nop       ; EA
+00000Br 1  40               rti       ; 40
+00000Cr 1               
+00000Cr 1               ; NMI Handler Vector
+00000Cr 1               nmi_handler:
+00000Cr 1  EA               nop       ; EA
+00000Dr 1  40               rti       ; 40
+00000Er 1               
+00000Er 1               ; -- VECTORS --
+00000Er 1               .segment "RESETVECTORS"
 000000r 1                 ;.org $fffa
 000000r 1  rr rr          .word nmi_handler ; NMI
 000002r 1  rr rr          .word reset       ; RESET
