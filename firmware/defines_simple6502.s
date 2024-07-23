@@ -93,6 +93,17 @@ PTR_TX          = $E7 ; Transmit String Pointer
 PTR_TX_L        = $E7 ; LO Byte
 PTR_TX_H        = $E8 ; HI Byte
 
+; WozMon ZeroPage Variables
+; uses $24 to $2B for its variables
+XAML            = $24           ;  Last "opened" location Low
+XAMH            = $25           ;  Last "opened" location High
+STL             = $26           ;  Store address Low
+STH             = $27           ;  Store address High
+L               = $28           ;  Hex value parsing Low
+H               = $29           ;  Hex value parsing High
+YSAV            = $2A           ;  Used to see if hex value is given
+MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+
 
 ; ### Useful Constants ###
 ; ASCII 
