@@ -10,4 +10,12 @@ This is a BIOS for the simple6502 SBC.
 - BASIC: will start with MS Basic from 1976 to be period correct and have Woz and Gates code in the same ROM
 - Some LOAD/SAVE feature to put binaries in memory though serial for testing. Maybe as an updat eto WozMon??
 
-Will come up with some other stuff with 32K I have space for stuff.
+Will come up with some other stuff with 32K I have space for stuff
+
+## Status
+
+**Version 0.1.0:**
+
+- Tested and working in board rev 1.6
+- Features:
+  - Wozmon
