@@ -4,7 +4,7 @@ My own take on a simple 6502 single board computer, inspired on Garth Wilson's e
 
 This project exists because of scope creep on my YAsixfive02 project, which is in its 10000 iteration. Which I don't think will ever end.
 
-## Design 
+## Design
 
 The goal is to build a simple 6502 SBC with RAM, ROM, IO decoding and a serial interface. An expansion  bus will carry all the address, data and supporting lines to allow adding IO and other hardware expansions. The PCB will be kept at 100x100mm to reduce cost.
 
@@ -17,6 +17,12 @@ The bus Slot connectors have pin 27 tied to IO_1 and IO_2 respectively allowing 
 I made the PCBs for Revision 1.6 on PCBWay. 
 ![Simple6502 PCB](https://github.com/marianol/simple6502/blob/main/hardware/gallery/simple6502_PCB.jpg?raw=true)
 
+## Status
+
+**Revision 1.6:**
+
+- PCB built and tested.
+- BIOS 0.0.1 working on Rev 1.6. Minimal BIOS routines to control the ACIA
 
 ## Memory Map
 
