@@ -1,4 +1,4 @@
-; simple6502 BIOS ROM f
+; simple6502 BIOS ROM 
 ; Written by Mariano Luna, 2024
 ; License: BSD-3-Clause
 ; https://opensource.org/license/bsd-3-clause
@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.0.1"   ; Define the version number
+.define VERSION "0.1.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
@@ -14,8 +14,13 @@
 ;.org $8000 
 
 ; JUMP Table
-.segment "HEADER"
+.segment "HEADER" 
+;BASIC:        jmp COLD_START
+MONITOR:      jmp WOZMON
 
+; WozMon
+.segment "WOZMON"  ; .org $FF00
+.include "wozmon_sbc.s" 
 
 ; BIOS Start
 .segment "BIOS"  
@@ -36,11 +41,7 @@ reset:
   lda #>startupMessage
   sta PTR_TX_H
   jsr serial_out_str
-  do_nothing:   
-    nop             ; EA
-    lda #$FF
-    sta $55FF
-    jmp do_nothing  ; 4C 1A 80
+  jmp WOZMON        ; go to the monitor
 
 
 ; ### Subrutines ### 
@@ -154,7 +155,6 @@ startupMessage:
   .byte VERSION
   .byte	$0D,$0A,"OK"
   .byte $0D,$0A,$00
-
 
 
 ; ### Interrupt Handlers ###

@@ -51,6 +51,7 @@ ACIA_RESET      = %00000011    ; 6850 reset
 ; This are intended to simplify config of the CTRL register 
 ; the onboard ACIA is driven by the main clock (CLK) @ 1.8432Mhz 
 ACIA_CFG_115    = %00010101    ; 8-N-1, 115200bps, no IRQ - /16 CLK 
+ACIA_CFG_115I   = %10010101    ; 8-N-1, 115200bps, IRQ - /16 CLK 
 ACIA_CFG_28     = %00010110    ; 8-N-1, 28800bps, no IRQ - /64 CLK 
 ACIA_CFG_28I    = %10010110    ; 8-N-1, 28800bps, IRQ - /64 CLK 
 
