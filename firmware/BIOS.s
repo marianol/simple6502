@@ -36,13 +36,18 @@ reset:
   jsr post          ; do a POST
   jsr init_serial   ; init ACIA # IO_8
   ; Print startup message
-  lda #<startupMessage
+  lda #<startupMessage 
   sta PTR_TX
   lda #>startupMessage
   sta PTR_TX_H
   jsr serial_out_str
+ ; Print woz message
+  lda #<wozmonMessage
+  sta PTR_TX
+  lda #>wozmonMessage
+  sta PTR_TX_H
+  jsr serial_out_str
   jmp WOZMON        ; go to the monitor
-
 
 ; ### Subrutines ### 
 
@@ -155,7 +160,9 @@ startupMessage:
   .byte VERSION
   .byte	$0D,$0A,"OK"
   .byte $0D,$0A,$00
-
+wozmonMessage:
+  .byte	CR,LF,"> WozMon <"
+  .byte CR,LF,$00
 
 ; ### Interrupt Handlers ###
 

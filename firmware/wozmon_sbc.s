@@ -1,7 +1,9 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
-
+; - 5 bytes
+; TEST PROGRAM
+; 0400: A9 20 20 77 80 18 69 01 C9 7F 30 F6 4C 00 04
 
 ; Page 0 Variables
 ; Moved to defines_simple6502.s
@@ -12,9 +14,10 @@ IN              = $0200         ;  Input buffer to $027F
 
 WOZMON:
                 JSR     init_serial    ; Initialize ACIA
+                ; JSR     out_crlf       ; send CR+LF
                 LDA     #$1B           ; Begin with escape. 
 NOTCR:
-                CMP     #$08           ; Backspace key?
+                CMP     #$08           ; Backspace key? * Changed to the actual BS key
                 BEQ     BACKSPACE      ; Yes.
                 CMP     #$1B           ; ESC?
                 BEQ     ESCAPE         ; Yes.
@@ -24,7 +27,7 @@ ESCAPE:
                 LDA     #$5C           ; "\".
                 JSR     ECHO           ; Output it.
 GETLINE:
-                JSR     out_crlf       ; Send CR+LF
+                JSR     out_crlf       ; * Send CR+LF
                 LDY     #$01           ; Initialize text index.
 BACKSPACE:      DEY                    ; Back up text index.
                 BMI     GETLINE        ; Beyond start of line, reinitialize.
@@ -33,7 +36,10 @@ NEXTCHAR:
                 AND     #ACIA_RDRF     ; Key ready?
                 BEQ     NEXTCHAR       ; Loop until ready.
                 LDA     ACIA_DATA      ; Load character. B7 will be '0'.
-                STA     IN,Y           ; Add to text buffer.
+                CMP     #$60           ;* Lower case?
+                BMI     GO_ON          ;* Nope, go on
+                AND     #$5F           ;* convert to Upper case ASCII
+GO_ON:          STA     IN,Y           ; Add to text buffer.
                 JSR     ECHO           ; Display character.
                 CMP     #$0D           ; CR?
                 BNE     NOTCR          ; No.
