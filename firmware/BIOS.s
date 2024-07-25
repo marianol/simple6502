@@ -57,17 +57,17 @@ serial_out_hex:
   and #$0F
   ora #$30
   cmp #$3A 
-  bcc @WRT   ; A is less so its less than 9 we are set
+  bcc @done   ; A is less so its less than 9 we are set
   adc #$06   ; A is more than 9 convert to letter
-@WRT:
+@done:
   jsr serial_out
   pla
   and #$0F  ; process the low nibble
   ora #$30 
   cmp #$3A 
-  bcc @WRT2
+  bcc @done2
   adc #$06
-@WRT2:
+@done2:
   jsr serial_out
   rts
 
@@ -162,6 +162,11 @@ startupMessage:
 ; IRQ Handler 
 irq_handler:
     nop       ; EA
+    ; BIT  VIA1_STATUS   ; Check 6522 VIA1's status register without loading.
+    ; BMI  SERVICE_VIA1  ; If it caused the interrupt, branch to service it.
+    ; BIT  VIA2_STATUS   ; Otherwise, check VIA2's status register.
+    ; BMI  SERVICE_VIA2  ; If that one did the interrupt, branch to service it.
+    ; JMP  SERVICE_ACIA  ; If both VIAs say "not me," it had to be the 6551 ACIA.
     rti       ; 40 
 
 ; NMI Handler Vector 
