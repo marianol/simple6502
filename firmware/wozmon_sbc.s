@@ -37,7 +37,12 @@ MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 IN              = $0200         ;  Input buffer to $027F
 
 WOZMON:
-                JSR     init_serial    ; Initialize ACIA
+                ; Run out of mem so assuming serial is inizialized by BIOS
+                ; with only one of this JSRs 'WOZMON' overflows the
+                ; 'MONITOR' segment memory area by 1 byte
+                ; if you are running this independently of the bios you
+                ; will need to uncomment the next 2 lines
+                ; JSR     init_serial    ; Initialize ACIA
                 ; JSR     out_crlf       ; send CR+LF
 WARMWOZ:        LDA     #$1B           ; Begin with escape. 
 NOTCR:

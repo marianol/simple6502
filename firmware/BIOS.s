@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.1.2"   ; Define the version number
+.define VERSION "0.1.3"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
@@ -46,11 +46,11 @@ reset:
   jsr serial_out_str
   jmp WOZMON        ; go to the monitor
 
+
+
 ; ### Subrutines ### 
 
-
-
-
+; post:
 ; Power on Self Test
 ; first thing will run on boot
 post: 
@@ -62,12 +62,15 @@ post:
   nop
   rts
 
-; init_serial
-; Reset and set ACIA config. Init the RX buffer pointer
+; ### Serial Routines ###
+
+; init_serial:
+; Initializes the on board serial interface 
+; Reset and set config for the ACIA. Init the RX buffer pointer
 init_serial:
   lda #ACIA_RESET
   sta ACIA_CONTROL
-  lda #ACIA_CFG_28    ; 28800 8,N,1
+  lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
   sta ACIA_CONTROL
   ; Init the RX buffer pointers
   lda #0
@@ -75,8 +78,11 @@ init_serial:
   sta PTR_WR_RX_BUF
   rts
 
-; TX A Register via Serial
-; Sends the char in A out the ACIA RS232
+; serial_out:
+; Transmit the char in the A Register via the on board
+; serial ACIA TTL-RS232
+; This routine uses pooling mode and will wait until the ACIA 
+; TX Data Register (TXDR) bit 1 is Empty to send the character. 
 serial_out:  
   pha
   pool_acia: ; pulling mode until ready to TX
@@ -87,24 +93,26 @@ serial_out:
   sta ACIA_DATA       ; output char in A to TDRE
   rts
 
-; Serial Receive 
-; Checks if the ACIA has RX a characted and put it in A 
-; if a byte was received sets the carry flag, if not it clears it
+; serial_in: 
+; Takes the byte recived by that ACIA and returns it in A (acumulator)  
+; if a byte was received sets the Carry Flag, if not it clears it
+;
 serial_in:
   lda ACIA_STATUS
   and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
   beq @no_data      ; nothing in the RX Buffer
   lda ACIA_DATA     ; load the byte to A
   jsr serial_out    ; echo back
-  sec
+  sec               ; we have data set Carry
   rts 
 @no_data:
-  clc
+  clc               ; no data RX clear carry
   rts
 
-; TX a string 
-; Sends the a null terminated string via RS232
-; - PTR_TX is a pointer to the string memory location
+; serial_out_str:
+; Sends the a null terminated string via serial
+; uses the ZP variable PTR_TX (PTR_TX_L + PTR_TX_H) as the pointer 
+; to the string memory location
 ; - Y register is not preserved
 serial_out_str:
   ldy #0
@@ -117,9 +125,9 @@ serial_out_str:
   @null_found:
   rts
 
-; ### Helper Serial Routines ###
+; # Helper Routines for Serial comms
 
-; serial_out_hex
+; serial_out_hex:
 ; Transmit the value of the A Register as ASCII HEX byte
 ; Need to check this routine, can be optimized
 serial_out_hex:
@@ -145,6 +153,7 @@ serial_out_hex:
   jsr serial_out
   rts
 
+; out_crlf
 ; Transmit a CR+LF > $0D,$0A 
 ; Preserves all registers
 out_crlf:
