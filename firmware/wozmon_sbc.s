@@ -1,10 +1,27 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
-; - 5 bytes
+;
+; Changelog:
+; - 5 bytes less
+; - updated to use BIOS ruitines fro Serial I/O
+; - moved Variables to defines_[platfrom].s
+; - updates to use standard ASCII (not Apple 1 bit 7 set) 
+; - input now case insensitive
+; - 
+
 ; TEST PROGRAM
 ; 0400: A9 20 20 77 80 18 69 01 C9 7F 30 F6 4C 00 04
-
+;
+;                            * = $0400
+; 0400   A9 20      L0400     LDA #$20
+; 0402   20 77 80   L0402     JSR $8077
+; 0405   18                   CLC
+; 0406   69 01                ADC #$01
+; 0408   C9 7F                CMP #$7F
+; 040A   30 F6                BMI L0402
+; 040C   4C 00 04             JMP L0400
+;                             .END
 ; Page 0 Variables
 ; Moved to defines_simple6502.s
 
