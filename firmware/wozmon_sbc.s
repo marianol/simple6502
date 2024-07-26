@@ -32,7 +32,7 @@ IN              = $0200         ;  Input buffer to $027F
 WOZMON:
                 JSR     init_serial    ; Initialize ACIA
                 ; JSR     out_crlf       ; send CR+LF
-                LDA     #$1B           ; Begin with escape. 
+WARMWOZ:        LDA     #$1B           ; Begin with escape. 
 NOTCR:
                 CMP     #$08           ; Backspace key? * Changed to the actual BS key
                 BEQ     BACKSPACE      ; Yes.
@@ -117,7 +117,12 @@ NOTHEX:
                 BNE     NEXTITEM       ; Get next item (no carry).
                 INC     STH            ; Add carry to 'store index' high order.
 TONEXTITEM:     JMP     NEXTITEM       ; Get next command item.
+; Update to allow R to run programs with JSR 
+; this enables the program to return to monitor on RTS
 RUNPRG:
+                JSR     RUNSUB         ;* do a JSR to the JMP to Address we want to run.
+                JMP     WARMWOZ        ;* if the program does an RTS we warm start WozMON.
+RUNSUB:                                ; added a new label to allow for the JSR hack
                 JMP     (XAML)         ; Run at current XAM index.
 NOTSTOR:
                 BMI     XAMNEXT        ; B7 = 0 for XAM, 1 for BLOCK XAM.
