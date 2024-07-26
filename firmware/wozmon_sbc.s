@@ -23,7 +23,14 @@
 ; 040C   4C 00 04             JMP L0400
 ;                             .END
 ; Page 0 Variables
-; Moved to defines_simple6502.s
+XAML            = $24           ;  Last "opened" location Low
+XAMH            = $25           ;  Last "opened" location High
+STL             = $26           ;  Store address Low
+STH             = $27           ;  Store address High
+L               = $28           ;  Hex value parsing Low
+H               = $29           ;  Hex value parsing High
+YSAV            = $2A           ;  Used to see if hex value is given
+MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 ; Other Variables
 
@@ -81,7 +88,7 @@ NEXTITEM:
                 BEQ     SETSTOR        ; Yes, set STOR mode.
                 CMP     #$52           ; "R"?
                 BEQ     RUNPRG            ; Yes, run user program.
-                STX     L              ; $00 -> L.
+                STX     L              ; $00 -> L. * Woz is relying on X being zero
                 STX     H              ;    and H.
                 STY     YSAV           ; Save Y for comparison
 NEXTHEX:
