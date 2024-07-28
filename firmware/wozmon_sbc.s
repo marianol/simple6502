@@ -41,7 +41,7 @@ WOZMON:
                 ; with only one of this JSRs 'WOZMON' overflows the
                 ; 'MONITOR' segment memory area by 1 byte
                 ; if you are running this independently of the bios you
-                ; will need to uncomment the next 2 lines
+                ; will need to uncomment the next line or 2 lines if you fancy a CR + LF
                 ; JSR     init_serial    ; Initialize ACIA
                 ; JSR     out_crlf       ; send CR+LF
 WARMWOZ:        LDA     #$1B           ; Begin with escape. 
@@ -169,7 +169,7 @@ XAMNEXT:        STX     MODE           ; 0 -> MODE (XAM mode).
                 INC     XAMH
 MOD8CHK:
                 LDA     XAML           ; Check low-order 'examine index' byte
-                AND     #$07           ; For MOD 8 = 0
+                AND     #$07           ; For MOD 8 = 0 * is this the one that cuts the line at 8 bytes?
                 BPL     NXTPRNT        ; Always taken.
 PRBYTE:
                 PHA                    ; Save A for LSD.
