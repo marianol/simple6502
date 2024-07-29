@@ -23,7 +23,8 @@ VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
 VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 
 ; Simple test of VIA port B 
-.org $0300 
+.segment "USR_PROGRAM" 
+; .org $0300 ; Wozmon has the buffer @ $0200
 ; Set VIA portB 
 lda #$ff ; Set all pins on port B to output
 sta $7F22 ; VIA1_DDRB > init port B
