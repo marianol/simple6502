@@ -29,12 +29,12 @@ All command tokens are six bytes long. The card will always respond to every com
 |             | blocks[22:0]  |       |       |                           | with next multi-block write command.
 | CMD24     | Address[31:0] | R1 | Yes | WRITE_BLOCK             | Write a block.
 | CMD25     | Address[31:0] | R1 | Yes | WRITE_MULTIPLE_BLOCK     | Write multiple blocks.
-| CMD55(*1) | None(0)     | R1 | No | APP_CMD                 | Leading command of ACMD<n> command.
+| CMD55(*1) | None(0)     | R1 | No | APP_CMD                 | Leading command of ACMD\<n> command.
 | CMD58     | None(0)     | R3 | No | READ_OCR                 | Read OCR.
 
-*1: ACMD<n> means a command sequense of CMD55-CMD<n>.
-*2: Rsv(0)[31], HCS[30], Rsv(0)[29:0]
-*3: Rsv(0)[31:12], Supply Voltage(1)[11:8], Check Pattern(0xAA)[7:0]
+*1: ACMD\<n> means a command sequense of CMD55-CM\<n>.
+*2: Rsv(0) [31], HCS[30], Rsv(0) [29:0]
+*3: Rsv(0) [31:12], Supply Voltage(1) [11:8], Check Pattern(0xAA) [7:0]
 
 ## SPI Response
 
@@ -65,3 +65,22 @@ Bit 7: out of range | csd overwrite.
 ### R3
 
 Five bytes in width. The first byte sent is identical to R1. The following four bytes are the contents of the OCR register.
+
+## SD Initialization in SPI mode
+
+<http://elm-chan.org/docs/mmc/mmc_e.html#spiinit>
+
+1. Put thr card in native mode ready for commands, this should be done after
+power On or card insertion:
+
+- De-select CS (i.e. make it HIGH)
+- Send 10 bytes of 0xFF (i.e. keep MOSI high, toggle CLK 80 times).
+  
+1. Set SPI mode sending a CMD0 with CS low to reset the card. Since the CMD0 must be sent as a native command, the CRC field must have a valid value.
+
+- Assert CS (set it LOW)
+- Send CMD0, then keep reading (by toggling CLK) until a 0x01 response is received
+
+Send a CMD55 (indicates the next byte will be application specific)
+Send a CMD41. If the response is not 0 then loop from CMD55 again
+Once a zero comes back, the card is ready, send a CMD16 and set block size to 512 bytes

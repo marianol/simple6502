@@ -133,6 +133,23 @@ SPI_receive:
       ;rts
 
 
+
+
+
+
+
+
+; SD Commands
+cmd0_bytes
+  .byte $40, $00, $00, $00, $00, $95
+cmd8_bytes
+  .byte $48, $00, $00, $01, $aa, $87
+cmd55_bytes
+  .byte $77, $00, $00, $00, $00, $01
+cmd41_bytes
+  .byte $69, $40, $00, $00, $00, $01
+
+
 ; Simple test of VIA port B 
 ; Set VIA portB 
 ; setVIA_PortB:
