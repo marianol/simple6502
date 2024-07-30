@@ -14,8 +14,8 @@ ext="${file##*.}"
 filename="${file%.*}"
 
 echo "Compiling $filename."
-ca65 -vvv --cpu 65C02 -o ./out/"$filename".o "$1"
+ca65 -vvv --cpu 65C02 -l ./out/"$filename".lst -o ./out/"$filename".o "$1"
 echo "Linking $filename using $ldconfig memory configuration."
-ld65 -C "$ldconfig" out/"$filename".o -o out/"$filename".bin
+ld65 -C "$ldconfig" out/"$filename".o -o out/"$filename".bin -Ln out/"$filename".lbl
 echo "Complete.."
 xxd -u -g 1  ./out/"$filename".bin
