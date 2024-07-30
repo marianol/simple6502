@@ -169,7 +169,7 @@ XAMNEXT:        STX     MODE           ; 0 -> MODE (XAM mode).
                 INC     XAMH
 MOD8CHK:
                 LDA     XAML           ; Check low-order 'examine index' byte
-                AND     #$07           ; For MOD 8 = 0 * is this the one that cuts the line at 8 bytes?
+                AND     #$0F           ; * Changed to diesplay 16 bytes per line AND #$07 ; For MOD 8 = 0  #%0000.0111
                 BPL     NXTPRNT        ; Always taken.
 PRBYTE:
                 PHA                    ; Save A for LSD.
