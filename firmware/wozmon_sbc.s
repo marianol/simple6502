@@ -4,7 +4,7 @@
 ;
 ; Changelog:
 ; - 5 bytes less
-; - updated to use BIOS ruitines fro Serial I/O
+; - updated to use BIOS ruitines for Serial int and some I/O
 ; - moved Variables to defines_[platfrom].s
 ; - updates to use standard ASCII (not Apple 1 bit 7 set) 
 ; - input now case insensitive
