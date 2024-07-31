@@ -35,8 +35,8 @@ VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 ;   VIA Port B
 ;   CLK     = PB0
 ;   MOSI    = PB1
-;   MISO    = PB7
 ;   CSB     = PB2 .. PB5
+;   MISO    = PB7
 ;   PB6     = Reserved for something since is a test BIT
 ; CLK and MOSI should have a pull up so they do not float before initialization
 
@@ -47,14 +47,18 @@ VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 ; Constants
 SPI_CLK     = %00000001
 SPI_MOSI    = %00000010
+SPI_CS      = %00000100
 SPI_MISO    = $10000000
 SPI_PORT    = VIA1_PORTB
 
 ; VIA1_setupSPI:
-; Initialize SPI on PORT B of VIA 1
+; Initialize SPI on PORT B of VIA 1 using bit 6 and 7 as input and the rest as output 
+; uses SPI_xxx constants Bit 1 is CLK, Bit 2 MOSI, Bit 8 MISO & Bit 3,4,5 & 6 as CS
+; Return: None 
+; Preserves: Y,X
 SPI_setupVIA1:
-  lda #%00111111  
-  sta VIA1_DDRB     ; Set bit 6 and 7 as inputs
+  lda #%00111111    ; Set bit 6 and 7 as inputs all the rest as outputs
+  sta VIA1_DDRB     ; Set pin directions
   lda #%00111100
   sta SPI_PORT      ; de select any periferial all CSB high
   jmp $FF03 ; go back to soft start WOZMON 
@@ -65,14 +69,15 @@ SPI_setupVIA1:
 ; send the byte in the Accumulator via SPI using MODE 0
 ; the CS line should be properly asserted before calling
 ; I keeep the set and clear in X and Y precalculated based on Jeff Laughton
-; A is not preserved
+; Return: A 
+; Preserves: Y,X
 SPI_send:
   phx 
   phy
 
   ; need to or with the current CS.... or use TRB or TSB
-  ldy #SPI_MOSI     ; set MOSI 1 with CLK in 0
-  ldx #0            ; set MOSI 0 with CLK in 0
+  ldy #SPI_MOSI     ; set MOSI 1 with CLK & CS in 0
+  ldx #0            ; set MOSI 0 with CLK & CS in 0
 
   sec               ; set carry bit to use as and a marker
   rol               ; push the marker in and move the bit to TX in the carry
@@ -103,15 +108,17 @@ SPI_send:
 
 ; SPI_receive:
 ; Get a full byte from SPI MODE 0 and return it in A
-; A is not preserved (obviously)
+; Will keep CS low but expect the CS to be managed outside of the subroutine
+; Return: A 
+; Preserves: Y,X
 SPI_receive:
   phy
-  ldy #0            ; CLK & MOSI low constant
+  ldy #0            ; CLK, CS & MOSI low constant
   lda #1            ; start with a 1 as a marker, as we shift when it 
                     ; lands in the carry it indicates we have received a full byte
 
   @getbyte:
-    sty SPI_PORT    ; Set CLK & MOSI low
+    sty SPI_PORT    ; Set CLK, CS & MOSI low
     inc SPI_PORT    ; Clock in
                     ;  INC will also set N based on the value of PB7 which is MOSI
                     ;  so there is no need to read the port to A
@@ -127,17 +134,23 @@ SPI_receive:
       bcc @getbyte  ; if we still do not see the marker keep receiving 
     
     @done:
-      sty SPI_PORT  ; Set CLK & MOSI low
+      sty SPI_PORT  ; Set CLK, CS & MOSI low
       ply 
       jmp $FF03 ; go back to soft start WOZMON
       ;rts
 
 
-
-
-
-
-
+; Complied BIN
+; ADDR:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+; 0300: A9 3F 8D 22 7F A9 3C 8D 20 7F 4C 03 FF DA 5A A0 
+; 0310: 02 A2 00 38 2A B0 0B 8E 20 7F EE 20 7F 0A D0 F5 
+; 0320: 80 09 8C 20 7F EE 20 7F 0A D0 EA 8C 20 7F 7A FA 
+; 0330: 4C 03 FF 5A A0 00 A9 01 8C 20 7F EE 20 7F 10 06  
+; 0340: 38 2A 90 F4 80 03 0A 90 EF 8C 20 7F 7A 4C 03 FF
+; Entry points
+; al 000333 .SPI_receive
+; al 00030D .SPI_send
+; al 000300 .SPI_setupVIA1
 
 ; SD Commands
 cmd0_bytes
