@@ -39,10 +39,12 @@ VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 ;   MISO    = PB7
 ;   PB6     = Reserved for something since is a test BIT
 ; CLK and MOSI should have a pull up so they do not float before initialization
-
-; Implementation:
+;
+; - Implementation:
+; Implemented in SPI Mode 0
 ; To Clock the signal INC/DEC PortB 
-; To read incoming data use the BIT instruction to test (with BPL and BMI)
+; MISO is set in PB7 to read incoming data useing the BIT instruction and the N flag
+; to test with BPL and BMI.
 
 ; Constants
 SPI_CLK     = %00000001
@@ -59,9 +61,9 @@ SPI_PORT    = VIA1_PORTB
 SPI_setupVIA1:
   lda #%00111111    ; Set bit 6 and 7 as inputs all the rest as outputs
   sta VIA1_DDRB     ; Set pin directions
-  lda #%00111100
-  sta SPI_PORT      ; de select any periferial all CSB high
-  jmp $FF03 ; go back to soft start WOZMON 
+  lda #%00111100    ; Set all ~CS to high, CLK, MOSI & MISO low
+  sta SPI_PORT      ; deselect any periferial all CSB high
+  jmp $FF03         ; go back to soft start WOZMON 
   ;rts
 
 
