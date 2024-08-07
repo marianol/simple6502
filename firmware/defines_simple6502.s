@@ -10,6 +10,7 @@
 ; 0x0000 - 0x7EFF : RAM 32K - 256 bytes (31.75K)
 ; 0x7F00 - 0x7FFF : I/O 256 bytes decoded to 8 IO lines
 ; 0x8000 - 0xFFFF : ROM 32K
+; Clock is @1.8432MHz so 0.542534722us per cycle
 
 ; I/O Space 
 IO_1    = $7F00 ; Slot #1 0x7F00 - 0x7F0F
