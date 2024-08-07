@@ -50,8 +50,15 @@ VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 SPI_CLK     = %00000001
 SPI_MOSI    = %00000010
 SPI_CS      = %00000100
+SPI_CS_DIS  = %00111100 ; disable CS1 Set ALL ~CS to high, CLK, MOSI & MISO low
+SPI_CS1_EN  = %00111000 ; enable CS1 Set other ~CS to high, CLK, MOSI & MISO low
 SPI_MISO    = $10000000
-SPI_PORT    = VIA1_PORTB
+SPI_PORT    = VIA1_PORTA
+SPI_DDR     = VIA1_DDRA 
+SPI_COMMAND = $40  ; put this in ZP
+SPI_COMMAND_L = SPI_COMMAND     ; put this in ZP
+SPI_COMMAND_H = SPI_COMMAND + 1 ; put this in ZP
+
 
 ; VIA1_setupSPI:
 ; Initialize SPI on PORT B of VIA 1 using bit 6 and 7 as input and the rest as output 
@@ -60,49 +67,118 @@ SPI_PORT    = VIA1_PORTB
 ; Preserves: Y,X
 SPI_setupVIA1:
   lda #%00111111    ; Set bit 6 and 7 as inputs all the rest as outputs
-  sta VIA1_DDRB     ; Set pin directions
-  lda #%00111100    ; Set all ~CS to high, CLK, MOSI & MISO low
+  sta SPI_DDR       ; Set pin directions
+  lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
   sta SPI_PORT      ; deselect any periferial all CSB high
-  jmp $FF03         ; go back to soft start WOZMON 
+
+  ; set port B for the lights
+  lda #$ff ; Set all pins on port B to output
+  sta VIA1_DDRB     ; $7F22  VIA1_DDRB > init port B
+  lda #%10101010    ; put a bit pattern in port B
+  sta VIA1_PORTB    ; $7F20 > VIA1_PORTB
   ;rts
+  jmp $FF03         ; go back to soft start WOZMON 
+
+
+; SPI_CS1_enable:
+; Asserts (turns low) the chip select line ~CS
+SPI_CS1_enable: 
+  pha
+  lda SPI_CS1_EN    ; Enable ~CS1 
+  sta SPI_PORT      
+  pla
+  ;rts
+  jmp $FF03         ; go back to soft start WOZMON 
+
+; SPI_CS_disable:
+; Disables (turns high) all chip select lines 
+SPI_CS_disable:
+  pha
+  lda SPI_CS_DIS    ; Disable all ~CS lines 
+  sta SPI_PORT      
+  pla
+  ;rts
+  jmp $FF03         ; go back to soft start WOZMON 
+
+; SPI_SD_init:
+; Reset sequence for SD card, places it in SPI mode, completes initialization.
+; Initi sequence: 1/ Clock 80 cycles with MOSI and CS high. 2/Send CMD 08 & check we received an 
+; GO_IDLE_STATE 3/ Send CMD8 to check if we have a 1.x or 2.x SD card 4/ send proper init 
+; command per version
+SPI_SD_init:
+  ; Card power up init delay 1ms +74 CLK cycles with the card disabled
+  ; the powerup time SHOULD have taken care of that ms (~542K Cycles @ 1.8432MHz)
+
+  ; send 74 CLK pulses (low-high transitions)
+  ldx #74
+  lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
+  sta SPI_PORT      
+  @loop; send 74 clock cycles
+    inc SPI_PORT ; clock high
+    pha ; waste 3 cycles 
+    pla ; waste 4 cycles = 7 cycles total = 3.8us = 263.314286kHz
+    dec SPI_PORT ; clock low
+    pha ; waste 3 cycles 
+    pla ; waste 4 cycles
+    dey 
+    bne @loop   
+  ; Select SD card 
+  lda SPI_CS1_EN    ; Enable ~CS1 
+  sta SPI_PORT 
+  ; send CMD0 = GO_IDLE_STATE - resets card to idle state, and SPI mode
+  lda #<cmd0_bytes
+  sta SPI_COMMAND_L
+  lda #>cmd0_bytes
+  sta SPI_COMMAND_H
+  jsr SPI_send_command
+  ; @todo: finish init sequence.... http://www.rjhcoding.com/avrc-sd-interface-1.php
+  ;rts
+  lda SPI_CS_DIS    ; Disable all ~CS lines 
+  sta SPI_PORT   
+  jmp $FF03         ; go back to soft start WOZMON
 
 
 ; SPI_send:
 ; send the byte in the Accumulator via SPI using MODE 0
-; the CS line should be properly asserted before calling
+; the CS line must be properly asserted before calling
 ; I keeep the set and clear in X and Y precalculated based on Jeff Laughton
 ; Return: A 
 ; Preserves: Y,X
 SPI_send:
   phx 
   phy
-
-  ; need to or with the current CS.... or use TRB or TSB
-  ldy #SPI_MOSI     ; set MOSI 1 with CLK & CS in 0
-  ldx #0            ; set MOSI 0 with CLK & CS in 0
-
+  ; precalculate send a 1 (y) or a 0 (x)
+  pha               ; save A that has the TX byte
+  lda SPI_PORT      ; get current status 
+  and #%00111100    ; preserve ~CS lines and set MOSI and CLK low (0) 
+  tax               ; Save in X how to send a 0
+  ora #%00000010    ; set MOSI 1 
+  tay               ; Save in Y how to send a 1
+  ; get ready to TX
+  ; remember we will TX the bit in the carry
+  pla               
   sec               ; set carry bit to use as and a marker
-  rol               ; push the marker in and move the bit to TX in the carry
+  rol               ; push the marker in A and move the bit to TX in the carry
 
-  @sendbyte:
-    bcs @send_1
-    ; carry is 0 so send 0
-    stx SPI_PORT    ; set MOSI to 0 and reset clock
+  @sendbyte:        ; send the but in the carry via SPI
+    bcs @send_1     ; send a 1?
+    ; carry is 0 so send Y
+    stx SPI_PORT    ; send MOSI to 1, clock 0
     inc SPI_PORT    ; clock it
-    asl             ; move next bit to carry
+    asl             ; move the next bit to C fill with 0
     bne @sendbyte   ; since we have the marker once finish the 8 bits A will be 0
-    bra @done       
+    beq @done       ; branch always I cloud use a bra from the 65C02    
  
     @send_1:
-      ; carry is 1 so send 1
-      sty SPI_PORT  ; set MOSI to 1 and reset clock
+      ; carry is 1 so send Y
+      sty SPI_PORT  ; send MOSI to 1, clock 0
       inc SPI_PORT  ; clock it
-      asl
-      bne @sendbyte   ; since we have the marker once finish the 8 bits A will be 0
-      ; fallthough if we are finished
+      asl           ; move the next bit to C fill with 0
+      bne @sendbyte ; since we have the marker once finish the 8 bits A will be 0
+      ; fallthough, we are finished
 
   @done:
-    sty SPI_PORT  ; leave clock low
+    dec SPI_PORT    ; leave clock low
     ply 
     plx 
     jmp $FF03 ; go back to soft start WOZMON
@@ -141,6 +217,20 @@ SPI_receive:
       jmp $FF03 ; go back to soft start WOZMON
       ;rts
 
+; SPI_send_command:
+; Will send through SPI the 6 byte command stored in SPI_COMMAND zp variable
+; CS should be properly asserted before calling it 
+SPI_send_command:
+  ldy #0                    ; init index
+  lda SPI_COMMAND
+  @loop
+    lda (SPI_COMMAND),y     ; load command byte
+    jsr SPI_send            ; send byte
+    iny
+    cpy #6
+    bne @loop
+  jmp $FF03 ; go back to soft start WOZMON
+  ;rts
 
 ; Complied BIN
 ; ADDR:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
@@ -155,6 +245,7 @@ SPI_receive:
 ; al 000300 .SPI_setupVIA1
 
 ; SD Commands
+; format: Command byte, data 1, data 2, data 3, data 4, CRC
 cmd0_bytes
   .byte $40, $00, $00, $00, $00, $95
 cmd8_bytes
