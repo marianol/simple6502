@@ -115,7 +115,7 @@ SPI_SD_init:
   ldx #74           ; send 74 CLK pulses (low-high transitions)
   lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
   sta SPI_PORT      
-  @loop             ; send 74 clock cycles
+  @loop:            ; send 74 clock cycles
     inc SPI_PORT    ; clock high
     pha             ; waste 3 cycles 
     pla             ; waste 4 cycles = 7 cycles total = 3.8us = 263.314286kHz
@@ -123,7 +123,7 @@ SPI_SD_init:
     pha             ; waste 3 cycles 
     pla             ; waste 4 cycles
     dey 
-    bne @loop   
+    bne @loop  
 
   ; Select SD card 
   lda SPI_CS1_EN        ; Enable ~CS1 
@@ -208,14 +208,14 @@ SPI_SD_init:
     beq SD_init_exit      ; Card ready init complete      
     ; retry ACMD41 after about 10ms
     ldy #$07
-    @delayloop
+    @delayloop:
       jsr delay_ms          ; 'bout 1.4ms wait just in case.
       dey
       bne @delayloop
     dex                     ; retry counter
     beq @send_ACMD41        ; retry ACMD41 until ready
-  ; got to #100 retries without success return FF as error
-  lda #ff;
+  ; got to #100 retries without success return $FF as error
+  lda #$ff;
   SD_init_exit: 
   ; on error it jumps here exiting with R1 in A
   pha
@@ -316,7 +316,7 @@ SPI_receive_byte:
 SD_send_command:
   ldy #0                    ; init index
   lda SPI_COMMAND
-  @loop
+  @loop:
     lda (SPI_COMMAND),y     ; load command byte
     jsr SPI_send            ; send byte
     iny
@@ -338,16 +338,16 @@ SD_wait_result:
   ;rts
 
 ; delay_ms:
-; Total delay including JRS/RTS = 2561 cycles = 1.389ms @ 1.8432MHz 
+; Total delay including JRS/RTS = 2584 cycles = 1.401ms @ 1.8432MHz 
 delay_ms:
-  ldy  #0       ; 2 cycles
+  ldy  #2       ; 2 cycles
   ldx  #0       ; 2 cycles
-  @loop   
-    dex         ; 510 cycles = 2 cycles * 255
-    bne  @loop  ; 765 (3 cycles 8 255 in loop) + 2 cycles at end
+  @loop:   
+    dex         ; 2 cycles
+    bne  @loop  ; 1277 cycles (3+2 cycles * 255 in loop) + 2 cycles at end
     dey         ; 510 cycles > 2 cycles * 255
-    bne  @loop  ; 765 (3 cycles 8 255 in loop) + 2 cycles at end
-    ; 2549 cycles + 6 JSR + 6 RTS
+    bne  @loop  ; 2566 (1277+2+3 cycles * 2 in loop) + 2 cycles at end
+    ; 2584 Cycles = 4 ldx/y + 2568 lopp + 6 JSR + 6 RTS
   rts
 
 ; Complied BIN
