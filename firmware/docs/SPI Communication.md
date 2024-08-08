@@ -66,6 +66,24 @@ Bit 7: out of range | csd overwrite.
 
 Five bytes in width. The first byte sent is identical to R1. The following four bytes are the contents of the OCR register.
 
+### R7
+
+R7 is 5 bytes long, and the first byte is identical to R1. Following that we have a command version field, a voltage accepted field, and an "echo-back" of the check pattern we sent in the command. Note that if you are using a first generation card, it will only return R1 with the illegal bit command set.
+
+Bit 0-7:   R1 response
+Bit 8-11:  Command version
+Bit 12-16: Reserved bits
+Bit 17-21: Voltage accepted
+Bit 22-20: Check pattern
+
+The Voltage accepted pattern is as follows:
+0b00000001  Voltage 2.7v to 3.3v
+0b00000010  Low Voltage
+0b00000100  Reserved
+0b00001000  Reserved
+
+Check pattern is an echo of the check pattern
+
 ## SD Initialization in SPI mode
 
 <http://elm-chan.org/docs/mmc/mmc_e.html#spiinit>
