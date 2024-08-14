@@ -88,6 +88,15 @@ PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
 PTR_TX          = $E7 ; Transmit String Pointer
 PTR_TX_L        = $E7 ; LO Byte
 PTR_TX_H        = $E8 ; HI Byte
+; used by Mon Print Registers
+P_STATUS        = $40
+PC_REG_H        = P_STATUS
+PC_REG_L        = P_STATUS + 1
+SP_REG          = P_STATUS + 2
+A_REG           = P_STATUS + 3
+X_REG           = P_STATUS + 4
+Y_REG           = P_STATUS + 5
+SR_REG          = P_STATUS + 6
 
 ; WozMon ZeroPage Variables
 ; uses $24 to $2B used 
