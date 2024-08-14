@@ -24,9 +24,29 @@ VIA1_ACR    = VIA1_BASE + 11    ; $7F2B Auxiliary Control register @
 VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
 VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 
+; NEW ZP variables for the processor status
+P_STATUS        = $40
+PC_REG_H        = P_STATUS
+PC_REG_L        = P_STATUS + 1
+SP_REG          = P_STATUS + 2
+A_REG           = P_STATUS + 3
+X_REG           = P_STATUS + 4
+Y_REG           = P_STATUS + 5
+SR_REG          = P_STATUS + 6
+
 
 .segment "USR_PROGRAM" 
 ;.org $0300 ; Wozmon has the buffer @ $0200
+
+; Print Routines from the BIOS, need to add a JMP table
+serial_out:  
+  jmp $8056
+
+serial_out_str:
+  jmp $8074
+
+ serial_out_hex:
+  jmp $8081
 
 ; # SPI bit banging implementation on VIA
 ; https://wilsonminesco.com/6502primer/potpourri.html#BITBANG_SPI
@@ -128,6 +148,12 @@ SPI_SD_init:
   ; Select SD card 
   lda SPI_CS1_EN        ; Enable ~CS1 
   sta SPI_PORT 
+  ; DEBUG
+  pha
+  lda #1
+  sta VIA1_PORTB 
+  pla
+  ; END
   ; send CMD0 = GO_IDLE_STATE - resets card to idle state, and SPI mode
   lda #<cmd0_bytes
   sta SPI_COMMAND_L
@@ -372,6 +398,85 @@ cmd55_bytes:
   .byte $77, $00, $00, $00, $00, $01
 acmd41_bytes:
   .byte $69, $40, $00, $00, $00, $01
+
+; display registers
+CPU_STATUS:
+    php                 ; push the processor status
+    sta A_REG           ; save A
+    stx X_REG           ; save X
+    sty Y_REG           ; save Y
+    pla                 ; get the processor status from the stack
+    sta SR_REG          ; save processor STatus
+    pla                 ; get the Program Counter low nibble, is put there by JSR
+    plx                 ; get the PC high nibble
+    stx PC_REG_H        ; 
+    sec                 ; prepare for substract
+    sbc #$02            ; substract 2 to get the top of the last instruction (JSR is 2 bytes)
+    sta PC_REG_L        ; save the low nibble
+    bcs @done           ; same page?
+    dex                 ; no, substract from the hi nibble
+@done:           
+    stx PC_REG_H        ; save PC
+    tsx                 ; put stack pointer to X
+    stx SP_REG          ; save Stack Pointer
+    jsr PRINT_CPU       ; dump register contents
+    ldx #$ff            ;
+    txs                 ; clear stack
+    cli                 ; enable interrupts again
+    jmp $FF03           ; go back to soft start WOZMON 
+    ;rts
+
+RegLabel:        
+    .byte" PC=  SP= A=  X=  Y=  SR= ="
+    ;    " PC=0000  SP=00  A=00  X=00  Y=00  SR=00 =NVRBDIZC"
+    .byte"                                          NVRBDIZC"
+
+
+PRINT_CPU:       
+    jsr print_CR          ; CR + LF
+    ldx #$ff              ; using x to cycke through the registers
+    ldy #$ff              ; using Y to walk though the label
+@LookForEqual:  
+    iny                   ;
+    lda RegLabel,y        ;
+    jsr serial_out        ; print the current char
+    cmp #$3D              ; if '=' we need to print the register
+    bne @LookForEqual     ; not yet, keep chugging
+    ; found '=' print first REG
+@PrintReg:      
+    inx                     ;
+    cpx   #$07              ; 7 registers total PC is H and L
+    beq   @PrintSP          ; done with reg Pretty print the SR
+    lda   P_STATUS,x        ; Load the Reg #x value
+    jsr   serial_out_hex    ;
+    cpx   #$00              ; is the PC? PC is the first one stored and has Hi and Lo bytes
+    bne   @LookForEqual     ; if x not finished go to next
+    bra   @PrintReg         ; we are in PC go print the Lo byte
+@PrintSP:      
+    dex                     ; back to SP 
+    lda   P_STATUS,x        ; get SP reg NVRBDIZC
+    ldx   #$08              ; count 8 bits
+@loop:
+    ldy #$30                ; Get Ascii zero, will use this to print
+    asl                     ; shift msb to C
+    pha                     ; save the SP as is
+    bcc @Print              ; print Zero 
+    iny                     ; Print One >  Y+1 = $31 ascii one
+    @Print:
+    tya                     ; print the ascii zero or one
+    jsr   serial_out        ; send it
+    pla                     ; restore SP
+    dex                     ; move to next bit
+    bne @loop                ; keep printing all bits
+    ; done > fall into the print_CR routine to finish
+print_CR:       
+    pha                     ; Save A
+    lda   #$0D              ; "CR"
+    jsr   serial_out        ; send it
+    lda   #$0A              ; "LF"
+    jsr   serial_out        ; send it
+    pla                     ; Restore A
+    rts 
 
 
 ; Simple test of VIA port B 
