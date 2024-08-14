@@ -102,3 +102,7 @@ power On or card insertion:
 Send a CMD55 (indicates the next byte will be application specific)
 Send a CMD41. If the response is not 0 then loop from CMD55 again
 Once a zero comes back, the card is ready, send a CMD16 and set block size to 512 bytes
+
+## Block Length
+
+Read and write operations are performed on SD cards in blocks of set lengths. Block length can be set in Standard Capacity SD cards using CMD16 (SET_BLOCKLEN). For SDHC and SDXC cards cards the block length is always set to 512 bytes.
