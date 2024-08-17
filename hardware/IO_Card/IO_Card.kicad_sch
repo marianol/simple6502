@@ -7,7 +7,7 @@
   (title_block
     (title "IO Card - simple6502")
     (date "2024-06-26")
-    (rev "0.6")
+    (rev "1.1")
     (company "MDS")
   )
 
