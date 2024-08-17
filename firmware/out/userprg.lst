@@ -28,374 +28,483 @@ Current file: userprg.s
 000000r 1               VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
 000000r 1               VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 000000r 1               
+000000r 1               ; NEW ZP variables for the processor status
+000000r 1               P_STATUS        = $40
+000000r 1               PC_REG_H        = P_STATUS
+000000r 1               PC_REG_L        = P_STATUS + 1
+000000r 1               SP_REG          = P_STATUS + 2
+000000r 1               A_REG           = P_STATUS + 3
+000000r 1               X_REG           = P_STATUS + 4
+000000r 1               Y_REG           = P_STATUS + 5
+000000r 1               SR_REG          = P_STATUS + 6
+000000r 1               
 000000r 1               
 000000r 1               .segment "USR_PROGRAM"
 000000r 1               ;.org $0300 ; Wozmon has the buffer @ $0200
 000000r 1               
-000000r 1               ; # SPI bit banging implementation on VIA
-000000r 1               ; https://wilsonminesco.com/6502primer/potpourri.html#BITBANG_SPI
-000000r 1               ; - Specifications
-000000r 1               ; Wiring:
-000000r 1               ;   VIA Port B
-000000r 1               ;   CLK     = PB0
-000000r 1               ;   MOSI    = PB1
-000000r 1               ;   CSB     = PB2 .. PB5
-000000r 1               ;   MISO    = PB7
-000000r 1               ;   PB6     = Reserved for something since is a test BIT
-000000r 1               ; CLK and MOSI should have a pull up so they do not float before initialization
-000000r 1               ;
-000000r 1               ; - Implementation:
-000000r 1               ; Implemented in SPI Mode 0
-000000r 1               ; To Clock the signal INC/DEC PortB
-000000r 1               ; MISO is set in PB7 to read incoming data useing the BIT instruction and the N flag
-000000r 1               ; to test with BPL and BMI.
-000000r 1               
-000000r 1               ; Constants
-000000r 1               SPI_CLK     = %00000001
-000000r 1               SPI_MOSI    = %00000010
-000000r 1               SPI_CS      = %00000100
-000000r 1               SPI_CS_DIS  = %00111100 ; disable CS1 Set ALL ~CS to high, CLK, MOSI & MISO low
-000000r 1               SPI_CS1_EN  = %00111000 ; enable CS1 Set other ~CS to high, CLK, MOSI & MISO low
-000000r 1               SPI_MISO    = $10000000
-000000r 1               SPI_PORT    = VIA1_PORTA
-000000r 1               SPI_DDR     = VIA1_DDRA
-000000r 1               SPI_COMMAND = $40  ; put this in ZP
-000000r 1               SPI_COMMAND_L = SPI_COMMAND     ; put this in ZP
-000000r 1               SPI_COMMAND_H = SPI_COMMAND + 1 ; put this in ZP
-000000r 1               
-000000r 1               
-000000r 1               ; VIA1_setupSPI:
-000000r 1               ; Initialize SPI on PORT B of VIA 1 using bit 6 and 7 as input and the rest as output
-000000r 1               ; uses SPI_xxx constants Bit 1 is CLK, Bit 2 MOSI, Bit 8 MISO & Bit 3,4,5 & 6 as CS
-000000r 1               ; Return: None
-000000r 1               ; Preserves: Y,X
-000000r 1               SPI_setupVIA1:
-000000r 1  A9 3F          lda #%00111111    ; Set bit 6 and 7 as inputs all the rest as outputs
-000002r 1  8D 23 7F       sta SPI_DDR       ; Set pin directions
-000005r 1  A9 3C          lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
-000007r 1  8D 21 7F       sta SPI_PORT      ; deselect any periferial all CSB high
-00000Ar 1               
-00000Ar 1                 ; set port B for the lights
-00000Ar 1  A9 FF          lda #$ff ; Set all pins on port B to output
-00000Cr 1  8D 22 7F       sta VIA1_DDRB     ; $7F22  VIA1_DDRB > init port B
-00000Fr 1  A9 AA          lda #%10101010    ; put a bit pattern in port B
-000011r 1  8D 20 7F       sta VIA1_PORTB    ; $7F20 > VIA1_PORTB
-000014r 1                 ;rts
-000014r 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
-000017r 1               
-000017r 1               
-000017r 1               ; SPI_CS1_enable:
-000017r 1               ; Asserts (turns low) the chip select line ~CS
-000017r 1               SPI_CS1_enable:
-000017r 1  48             pha
-000018r 1  A5 38          lda SPI_CS1_EN    ; Enable ~CS1
-00001Ar 1  8D 21 7F       sta SPI_PORT
-00001Dr 1  68             pla
-00001Er 1                 ;rts
-00001Er 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
-000021r 1               
-000021r 1               ; SPI_CS_disable:
-000021r 1               ; Disables (turns high) all chip select lines
-000021r 1               SPI_CS_disable:
-000021r 1  48             pha
-000022r 1  A5 3C          lda SPI_CS_DIS    ; Disable all ~CS lines
-000024r 1  8D 21 7F       sta SPI_PORT
-000027r 1  68             pla
-000028r 1                 ;rts
-000028r 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
-00002Br 1               
-00002Br 1               ; SPI_SD_init:
-00002Br 1               ; Reset sequence for SD card, places it in SPI mode, completes initialization.
-00002Br 1               ; Initi sequence: 1/ Clock 80 cycles with MOSI and CS high. 2/Send CMD 08 & check we received an
-00002Br 1               ; GO_IDLE_STATE 3/ Send CMD8 to check if we have a 1.x or 2.x SD card 4/ send proper init
-00002Br 1               ; command per version
-00002Br 1               ; Init process is here https://chlazza.nfshost.com/imgs/SDcardInitFlowchart_3.01.png
-00002Br 1               ; Return: A > Contains the value of the last SD response,
-00002Br 1               ;             $00 on init success, erros othewise
-00002Br 1               SPI_SD_init:
-00002Br 1                 ; Card power up the power up time SHOULD have taken care of that ms (~542K Cycles @ 1.8432MHz)
-00002Br 1                 ; after than an init delay of +74 CLK cycles with the card disabled in 1ms
-00002Br 1               
-00002Br 1  A2 4A          ldx #74           ; send 74 CLK pulses (low-high transitions)
-00002Dr 1  A9 3C          lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
-00002Fr 1  8D 21 7F       sta SPI_PORT
-000032r 1                 @loop:            ; send 74 clock cycles
-000032r 1  EE 21 7F         inc SPI_PORT    ; clock high
-000035r 1  48               pha             ; waste 3 cycles
-000036r 1  68               pla             ; waste 4 cycles = 7 cycles total = 3.8us = 263.314286kHz
-000037r 1  CE 21 7F         dec SPI_PORT    ; clock low
-00003Ar 1  48               pha             ; waste 3 cycles
-00003Br 1  68               pla             ; waste 4 cycles
-00003Cr 1  88               dey
-00003Dr 1  D0 F3            bne @loop
-00003Fr 1               
-00003Fr 1                 ; Select SD card
-00003Fr 1  A5 38          lda SPI_CS1_EN        ; Enable ~CS1
-000041r 1  8D 21 7F       sta SPI_PORT
-000044r 1                 ; send CMD0 = GO_IDLE_STATE - resets card to idle state, and SPI mode
-000044r 1  A9 rr          lda #<cmd0_bytes
-000046r 1  85 40          sta SPI_COMMAND_L
-000048r 1  A9 rr          lda #>cmd0_bytes
-00004Ar 1  85 41          sta SPI_COMMAND_H
-00004Cr 1  20 rr rr       jsr SD_send_command   ; send CMD0
-00004Fr 1                 ; check for Idle state ($01) or Illegal command response ($04)
-00004Fr 1  20 rr rr       jsr SD_wait_result    ; wait for a result
-000052r 1  C9 01          cmp #$01              ; R1=$01 The card is in idle state and running the initializing process.
-000054r 1  D0 5A          bne SD_init_exit
-000056r 1                 ; Wait for the card to initialize.
-000056r 1                 ; how much... I have no clue, shoud I research, yes. Will do it, nor now :)
-000056r 1  20 rr rr       jsr delay_ms          ; 'bout 1.4ms
-000059r 1  20 rr rr       jsr delay_ms          ; 'bout 1.4ms
-00005Cr 1               
-00005Cr 1                 ; use CMD8 to see if we have a v2.00+ or v1.x
-00005Cr 1                 ; CMD8 = SEND_IF_COND - Sends SD Memory Card interface condition that includes
-00005Cr 1                 ;                       Host Supply Voltage (VHS) information and asks the accessed
-00005Cr 1                 ;                       card whether card can operate in supplied voltage range.
-00005Cr 1  A9 rr          lda #<cmd8_bytes
-00005Er 1  85 40          sta SPI_COMMAND_L
-000060r 1  A9 rr          lda #>cmd8_bytes
-000062r 1  85 41          sta SPI_COMMAND_H
-000064r 1  20 rr rr       jsr SD_send_command   ; send CMD8
-000067r 1                 ; Check response
-000067r 1  20 rr rr       jsr SD_wait_result    ; wait for a result
-00006Ar 1                 ; if R=$04 (Illegal command, response bit 2 set) then v1.x else v2.0+
-00006Ar 1                 ; for now let's deal with 2.0+ and fail otherwise
-00006Ar 1                 ; The response to CMD8 for v2 is format R7
-00006Ar 1                 ; R7 is 5 bytes long, and the first byte is identical to R1
-00006Ar 1  C9 01          cmp #$01              ; R=$01 in idle state,
-00006Cr 1  D0 42          bne SD_init_exit
-00006Er 1                 ; The card is v2.0+ get the other 4 bytes of the R7 response
-00006Er 1                 ; let's ignore this for now but will be good to save them somewhere
-00006Er 1  20 rr rr       jsr SD_wait_result
-000071r 1  20 rr rr       jsr SD_wait_result
-000074r 1  20 rr rr       jsr SD_wait_result
-000077r 1  20 rr rr       jsr SD_wait_result
-00007Ar 1               
-00007Ar 1                 ; At this point we can send CMD58 to read operation conditions register (OCR)
-00007Ar 1                 ; this is optional and I am lazy so will ignore it for now
-00007Ar 1                 ; @todo: investigate this
-00007Ar 1               
-00007Ar 1               
-00007Ar 1                 ; send ACMD41 SD_SEND_OP_COND (send operating condition), this is is what starts
-00007Ar 1                 ; the card's initialization process.
-00007Ar 1                 ; first we need to send CMD55 this is an APP_CMD a required prefix for ACMD commands
-00007Ar 1                 ; timeout value for initialization beginning from the end of the first ACMD41 is 1 sec
-00007Ar 1               
-00007Ar 1  A2 64          ldx #$64               ; retry counter 100 times for ACMS41
-00007Cr 1               
-00007Cr 1                 @send_ACMD41:
-00007Cr 1  A9 rr            lda #<cmd55_bytes
-00007Er 1  85 40            sta SPI_COMMAND_L
-000080r 1  A9 rr            lda #>cmd55_bytes
-000082r 1  85 41            sta SPI_COMMAND_H
-000084r 1  20 rr rr         jsr SD_send_command   ; send CMD55
-000087r 1                   ; check for Idle state ($01)
-000087r 1  20 rr rr         jsr SD_wait_result    ; wait for a result
-00008Ar 1  C9 01            cmp #$01              ; R1=$01 The card is in idle state
-00008Cr 1  D0 22            bne SD_init_exit
-00008Er 1               
-00008Er 1  20 rr rr         jsr delay_ms          ; 'bout 1.4ms wait just in case.
-000091r 1               
-000091r 1                   ; now we can send ACMD41: SD_SEND_OP_COMMAND
-000091r 1  A9 rr            lda #<acmd41_bytes
-000093r 1  85 40            sta SPI_COMMAND_L
-000095r 1  A9 rr            lda #>acmd41_bytes
-000097r 1  85 41            sta SPI_COMMAND_H
-000099r 1  20 rr rr         jsr SD_send_command   ; send CMD
-00009Cr 1                   ; check for Response:
-00009Cr 1                   ; ACMD41 starts the initialization process. In the startup sequence, we will continue to
-00009Cr 1                   ; send ACMD41 (always preceded by CMD55) until the card is inizialised.s
-00009Cr 1                   ; R1 = $01 = not ready, in idle state
-00009Cr 1                   ; R1 = $00 = card ready
-00009Cr 1  20 rr rr         jsr SD_wait_result    ; wait for a result
-00009Fr 1  C9 00            cmp #$00              ; SD card ready if R1 = $00
-0000A1r 1  F0 0D            beq SD_init_exit      ; Card ready init complete
-0000A3r 1                   ; retry ACMD41 after about 10ms
-0000A3r 1  A0 07            ldy #$07
-0000A5r 1                   @delayloop:
-0000A5r 1  20 rr rr           jsr delay_ms          ; 'bout 1.4ms wait just in case.
-0000A8r 1  88                 dey
-0000A9r 1  D0 FA              bne @delayloop
-0000ABr 1  CA               dex                     ; retry counter
-0000ACr 1  F0 CE            beq @send_ACMD41        ; retry ACMD41 until ready
-0000AEr 1                 ; got to #100 retries without success return $FF as error
-0000AEr 1  A9 FF          lda #$ff;
-0000B0r 1                 SD_init_exit:
-0000B0r 1                 ; on error it jumps here exiting with R1 in A
-0000B0r 1  48             pha
-0000B1r 1  A9 3C          lda #SPI_CS_DIS    ; Disable all ~CS lines
-0000B3r 1  8D 21 7F       sta SPI_PORT
-0000B6r 1  68             pla
-0000B7r 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
-0000BAr 1                 ;rts
-0000BAr 1               
-0000BAr 1               
-0000BAr 1               ; SPI_send:
-0000BAr 1               ; send the byte in the Accumulator via SPI using MODE 0
-0000BAr 1               ; the CS line must be properly asserted before calling
-0000BAr 1               ; I keeep the set and clear in X and Y precalculated based on Jeff Laughton
-0000BAr 1               ; Return: A
-0000BAr 1               ; Preserves: Y,X
-0000BAr 1               SPI_send:
-0000BAr 1  DA             phx
-0000BBr 1  5A             phy
-0000BCr 1                 ; precalculate send a 1 (y) or a 0 (x)
-0000BCr 1  48             pha               ; save A that has the TX byte
-0000BDr 1  AD 21 7F       lda SPI_PORT      ; get current status
-0000C0r 1  29 3C          and #%00111100    ; preserve ~CS lines and set MOSI and CLK low (0)
-0000C2r 1  AA             tax               ; Save in X how to send a 0
-0000C3r 1  09 02          ora #%00000010    ; set MOSI 1
-0000C5r 1  A8             tay               ; Save in Y how to send a 1
-0000C6r 1                 ; get ready to TX
-0000C6r 1                 ; remember we will TX the bit in the carry
+000000r 1               ; Print Routines from the BIOS, need to add a JMP table
+000000r 1               serial_out:
+000000r 1  4C 56 80       jmp $8056
+000003r 1               
+000003r 1               serial_out_str:
+000003r 1  4C 74 80       jmp $8074
+000006r 1               
+000006r 1                serial_out_hex:
+000006r 1  4C 81 80       jmp $8081
+000009r 1               
+000009r 1               ; # SPI bit banging implementation on VIA
+000009r 1               ; https://wilsonminesco.com/6502primer/potpourri.html#BITBANG_SPI
+000009r 1               ; - Specifications
+000009r 1               ; Wiring:
+000009r 1               ;   VIA Port B
+000009r 1               ;   CLK     = PB0
+000009r 1               ;   MOSI    = PB1
+000009r 1               ;   CSB     = PB2 .. PB5
+000009r 1               ;   MISO    = PB7
+000009r 1               ;   PB6     = Reserved for something since is a test BIT
+000009r 1               ; CLK and MOSI should have a pull up so they do not float before initialization
+000009r 1               ;
+000009r 1               ; - Implementation:
+000009r 1               ; Implemented in SPI Mode 0
+000009r 1               ; To Clock the signal INC/DEC PortB
+000009r 1               ; MISO is set in PB7 to read incoming data useing the BIT instruction and the N flag
+000009r 1               ; to test with BPL and BMI.
+000009r 1               
+000009r 1               ; Constants
+000009r 1               SPI_CLK     = %00000001
+000009r 1               SPI_MOSI    = %00000010
+000009r 1               SPI_CS      = %00000100
+000009r 1               SPI_CS_DIS  = %00111100 ; disable CS1 Set ALL ~CS to high, CLK, MOSI & MISO low
+000009r 1               SPI_CS1_EN  = %00111000 ; enable CS1 Set other ~CS to high, CLK, MOSI & MISO low
+000009r 1               SPI_MISO    = $10000000
+000009r 1               SPI_PORT    = VIA1_PORTA
+000009r 1               SPI_DDR     = VIA1_DDRA
+000009r 1               SPI_COMMAND = $40  ; put this in ZP
+000009r 1               SPI_COMMAND_L = SPI_COMMAND     ; put this in ZP
+000009r 1               SPI_COMMAND_H = SPI_COMMAND + 1 ; put this in ZP
+000009r 1               
+000009r 1               
+000009r 1               ; VIA1_setupSPI:
+000009r 1               ; Initialize SPI on PORT B of VIA 1 using bit 6 and 7 as input and the rest as output
+000009r 1               ; uses SPI_xxx constants Bit 1 is CLK, Bit 2 MOSI, Bit 8 MISO & Bit 3,4,5 & 6 as CS
+000009r 1               ; Return: None
+000009r 1               ; Preserves: Y,X
+000009r 1               SPI_setupVIA1:
+000009r 1  A9 3F          lda #%00111111    ; Set bit 6 and 7 as inputs all the rest as outputs
+00000Br 1  8D 23 7F       sta SPI_DDR       ; Set pin directions
+00000Er 1  A9 3C          lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
+000010r 1  8D 21 7F       sta SPI_PORT      ; deselect any periferial all CSB high
+000013r 1               
+000013r 1                 ; set port B for the lights
+000013r 1  A9 FF          lda #$ff ; Set all pins on port B to output
+000015r 1  8D 22 7F       sta VIA1_DDRB     ; $7F22  VIA1_DDRB > init port B
+000018r 1  A9 AA          lda #%10101010    ; put a bit pattern in port B
+00001Ar 1  8D 20 7F       sta VIA1_PORTB    ; $7F20 > VIA1_PORTB
+00001Dr 1                 ;rts
+00001Dr 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
+000020r 1               
+000020r 1               
+000020r 1               ; SPI_CS1_enable:
+000020r 1               ; Asserts (turns low) the chip select line ~CS
+000020r 1               SPI_CS1_enable:
+000020r 1  48             pha
+000021r 1  A5 38          lda SPI_CS1_EN    ; Enable ~CS1
+000023r 1  8D 21 7F       sta SPI_PORT
+000026r 1  68             pla
+000027r 1                 ;rts
+000027r 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
+00002Ar 1               
+00002Ar 1               ; SPI_CS_disable:
+00002Ar 1               ; Disables (turns high) all chip select lines
+00002Ar 1               SPI_CS_disable:
+00002Ar 1  48             pha
+00002Br 1  A5 3C          lda SPI_CS_DIS    ; Disable all ~CS lines
+00002Dr 1  8D 21 7F       sta SPI_PORT
+000030r 1  68             pla
+000031r 1                 ;rts
+000031r 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
+000034r 1               
+000034r 1               ; SPI_SD_init:
+000034r 1               ; Reset sequence for SD card, places it in SPI mode, completes initialization.
+000034r 1               ; Initi sequence: 1/ Clock 80 cycles with MOSI and CS high. 2/Send CMD 08 & check we received an
+000034r 1               ; GO_IDLE_STATE 3/ Send CMD8 to check if we have a 1.x or 2.x SD card 4/ send proper init
+000034r 1               ; command per version
+000034r 1               ; Init process is here https://chlazza.nfshost.com/imgs/SDcardInitFlowchart_3.01.png
+000034r 1               ; Return: A > Contains the value of the last SD response,
+000034r 1               ;             $00 on init success, erros othewise
+000034r 1               SPI_SD_init:
+000034r 1                 ; Card power up the power up time SHOULD have taken care of that ms (~542K Cycles @ 1.8432MHz)
+000034r 1                 ; after than an init delay of +74 CLK cycles with the card disabled in 1ms
+000034r 1               
+000034r 1  A2 4A          ldx #74           ; send 74 CLK pulses (low-high transitions)
+000036r 1  A9 3C          lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
+000038r 1  8D 21 7F       sta SPI_PORT
+00003Br 1                 @loop:            ; send 74 clock cycles
+00003Br 1  EE 21 7F         inc SPI_PORT    ; clock high
+00003Er 1  48               pha             ; waste 3 cycles
+00003Fr 1  68               pla             ; waste 4 cycles = 7 cycles total = 3.8us = 263.314286kHz
+000040r 1  CE 21 7F         dec SPI_PORT    ; clock low
+000043r 1  48               pha             ; waste 3 cycles
+000044r 1  68               pla             ; waste 4 cycles
+000045r 1  88               dey
+000046r 1  D0 F3            bne @loop
+000048r 1               
+000048r 1                 ; Select SD card
+000048r 1  A5 38          lda SPI_CS1_EN        ; Enable ~CS1
+00004Ar 1  8D 21 7F       sta SPI_PORT
+00004Dr 1                 ; DEBUG
+00004Dr 1  48             pha
+00004Er 1  A9 01          lda #1
+000050r 1  8D 20 7F       sta VIA1_PORTB
+000053r 1  68             pla
+000054r 1                 ; END
+000054r 1                 ; send CMD0 = GO_IDLE_STATE - resets card to idle state, and SPI mode
+000054r 1  A9 rr          lda #<cmd0_bytes
+000056r 1  85 40          sta SPI_COMMAND_L
+000058r 1  A9 rr          lda #>cmd0_bytes
+00005Ar 1  85 41          sta SPI_COMMAND_H
+00005Cr 1  20 rr rr       jsr SD_send_command   ; send CMD0
+00005Fr 1                 ; check for Idle state ($01) or Illegal command response ($04)
+00005Fr 1  20 rr rr       jsr SD_wait_result    ; wait for a result
+000062r 1  C9 01          cmp #$01              ; R1=$01 The card is in idle state and running the initializing process.
+000064r 1  D0 5A          bne SD_init_exit
+000066r 1                 ; Wait for the card to initialize.
+000066r 1                 ; how much... I have no clue, shoud I research, yes. Will do it, nor now :)
+000066r 1  20 rr rr       jsr delay_ms          ; 'bout 1.4ms
+000069r 1  20 rr rr       jsr delay_ms          ; 'bout 1.4ms
+00006Cr 1               
+00006Cr 1                 ; use CMD8 to see if we have a v2.00+ or v1.x
+00006Cr 1                 ; CMD8 = SEND_IF_COND - Sends SD Memory Card interface condition that includes
+00006Cr 1                 ;                       Host Supply Voltage (VHS) information and asks the accessed
+00006Cr 1                 ;                       card whether card can operate in supplied voltage range.
+00006Cr 1  A9 rr          lda #<cmd8_bytes
+00006Er 1  85 40          sta SPI_COMMAND_L
+000070r 1  A9 rr          lda #>cmd8_bytes
+000072r 1  85 41          sta SPI_COMMAND_H
+000074r 1  20 rr rr       jsr SD_send_command   ; send CMD8
+000077r 1                 ; Check response
+000077r 1  20 rr rr       jsr SD_wait_result    ; wait for a result
+00007Ar 1                 ; if R=$04 (Illegal command, response bit 2 set) then v1.x else v2.0+
+00007Ar 1                 ; for now let's deal with 2.0+ and fail otherwise
+00007Ar 1                 ; The response to CMD8 for v2 is format R7
+00007Ar 1                 ; R7 is 5 bytes long, and the first byte is identical to R1
+00007Ar 1  C9 01          cmp #$01              ; R=$01 in idle state,
+00007Cr 1  D0 42          bne SD_init_exit
+00007Er 1                 ; The card is v2.0+ get the other 4 bytes of the R7 response
+00007Er 1                 ; let's ignore this for now but will be good to save them somewhere
+00007Er 1  20 rr rr       jsr SD_wait_result
+000081r 1  20 rr rr       jsr SD_wait_result
+000084r 1  20 rr rr       jsr SD_wait_result
+000087r 1  20 rr rr       jsr SD_wait_result
+00008Ar 1               
+00008Ar 1                 ; At this point we can send CMD58 to read operation conditions register (OCR)
+00008Ar 1                 ; this is optional and I am lazy so will ignore it for now
+00008Ar 1                 ; @todo: investigate this
+00008Ar 1               
+00008Ar 1               
+00008Ar 1                 ; send ACMD41 SD_SEND_OP_COND (send operating condition), this is is what starts
+00008Ar 1                 ; the card's initialization process.
+00008Ar 1                 ; first we need to send CMD55 this is an APP_CMD a required prefix for ACMD commands
+00008Ar 1                 ; timeout value for initialization beginning from the end of the first ACMD41 is 1 sec
+00008Ar 1               
+00008Ar 1  A2 64          ldx #$64               ; retry counter 100 times for ACMS41
+00008Cr 1               
+00008Cr 1                 @send_ACMD41:
+00008Cr 1  A9 rr            lda #<cmd55_bytes
+00008Er 1  85 40            sta SPI_COMMAND_L
+000090r 1  A9 rr            lda #>cmd55_bytes
+000092r 1  85 41            sta SPI_COMMAND_H
+000094r 1  20 rr rr         jsr SD_send_command   ; send CMD55
+000097r 1                   ; check for Idle state ($01)
+000097r 1  20 rr rr         jsr SD_wait_result    ; wait for a result
+00009Ar 1  C9 01            cmp #$01              ; R1=$01 The card is in idle state
+00009Cr 1  D0 22            bne SD_init_exit
+00009Er 1               
+00009Er 1  20 rr rr         jsr delay_ms          ; 'bout 1.4ms wait just in case.
+0000A1r 1               
+0000A1r 1                   ; now we can send ACMD41: SD_SEND_OP_COMMAND
+0000A1r 1  A9 rr            lda #<acmd41_bytes
+0000A3r 1  85 40            sta SPI_COMMAND_L
+0000A5r 1  A9 rr            lda #>acmd41_bytes
+0000A7r 1  85 41            sta SPI_COMMAND_H
+0000A9r 1  20 rr rr         jsr SD_send_command   ; send CMD
+0000ACr 1                   ; check for Response:
+0000ACr 1                   ; ACMD41 starts the initialization process. In the startup sequence, we will continue to
+0000ACr 1                   ; send ACMD41 (always preceded by CMD55) until the card is inizialised.s
+0000ACr 1                   ; R1 = $01 = not ready, in idle state
+0000ACr 1                   ; R1 = $00 = card ready
+0000ACr 1  20 rr rr         jsr SD_wait_result    ; wait for a result
+0000AFr 1  C9 00            cmp #$00              ; SD card ready if R1 = $00
+0000B1r 1  F0 0D            beq SD_init_exit      ; Card ready init complete
+0000B3r 1                   ; retry ACMD41 after about 10ms
+0000B3r 1  A0 07            ldy #$07
+0000B5r 1                   @delayloop:
+0000B5r 1  20 rr rr           jsr delay_ms          ; 'bout 1.4ms wait just in case.
+0000B8r 1  88                 dey
+0000B9r 1  D0 FA              bne @delayloop
+0000BBr 1  CA               dex                     ; retry counter
+0000BCr 1  F0 CE            beq @send_ACMD41        ; retry ACMD41 until ready
+0000BEr 1                 ; got to #100 retries without success return $FF as error
+0000BEr 1  A9 FF          lda #$ff;
+0000C0r 1                 SD_init_exit:
+0000C0r 1                 ; on error it jumps here exiting with R1 in A
+0000C0r 1  48             pha
+0000C1r 1  A9 3C          lda #SPI_CS_DIS    ; Disable all ~CS lines
+0000C3r 1  8D 21 7F       sta SPI_PORT
 0000C6r 1  68             pla
-0000C7r 1  38             sec               ; set carry bit to use as and a marker
-0000C8r 1  2A             rol               ; push the marker in A and move the bit to TX in the carry
-0000C9r 1               
-0000C9r 1                 @sendbyte:        ; send the but in the carry via SPI
-0000C9r 1  B0 0B            bcs @send_1     ; send a 1?
-0000CBr 1                   ; carry is 0 so send Y
-0000CBr 1  8E 21 7F         stx SPI_PORT    ; send MOSI to 1, clock 0
-0000CEr 1  EE 21 7F         inc SPI_PORT    ; clock it
-0000D1r 1  0A               asl             ; move the next bit to C fill with 0
-0000D2r 1  D0 F5            bne @sendbyte   ; since we have the marker once finish the 8 bits A will be 0
-0000D4r 1  F0 09            beq @done       ; branch always I cloud use a bra from the 65C02
-0000D6r 1               
-0000D6r 1                   @send_1:
-0000D6r 1                     ; carry is 1 so send Y
-0000D6r 1  8C 21 7F           sty SPI_PORT  ; send MOSI to 1, clock 0
-0000D9r 1  EE 21 7F           inc SPI_PORT  ; clock it
-0000DCr 1  0A                 asl           ; move the next bit to C fill with 0
-0000DDr 1  D0 EA              bne @sendbyte ; since we have the marker once finish the 8 bits A will be 0
-0000DFr 1                     ; fallthough, we are finished
-0000DFr 1               
-0000DFr 1                 @done:
-0000DFr 1  CE 21 7F         dec SPI_PORT    ; leave clock low
-0000E2r 1  7A               ply
-0000E3r 1  FA               plx
-0000E4r 1  4C 03 FF         jmp $FF03 ; go back to soft start WOZMON
-0000E7r 1                   ;rts
-0000E7r 1               
-0000E7r 1               ; SPI_receive_byte:
-0000E7r 1               ; Get a full byte from SPI MODE 0 and return it in A
-0000E7r 1               ; Tick the clock 8 times with MOSI high, capturing bits from MISO and returning them
-0000E7r 1               ; Will keep CS low but expect the CS to be managed outside of the subroutine
-0000E7r 1               ; Return: A
-0000E7r 1               ; Preserves: Y,X
-0000E7r 1               SPI_receive_byte:
-0000E7r 1  5A             phy
-0000E8r 1  AD 21 7F       lda SPI_PORT      ; get current status
-0000EBr 1  29 3C          and #%00111100    ; preserve ~CS lines and set MOSI and CLK low (0)
-0000EDr 1  09 02          ora #%00000010    ; preserve ~CS lines and set MOSI high
-0000EFr 1  A8             tay               ; Save in Y CLK & MOSI low constant
-0000F0r 1  A9 01          lda #1            ; start with a 1 as a marker, as we shift when it
-0000F2r 1  18             clc               ; lands in the carry it indicates we have received a full byte
-0000F3r 1               
-0000F3r 1                 @getbyte:
-0000F3r 1  8C 21 7F         sty SPI_PORT    ; Clock out, set CLK, CS & MOSI low
-0000F6r 1  EE 21 7F         inc SPI_PORT    ; Clock in > 6 cycles ~ 397 kHz
-0000F9r 1                                   ;  INC will also set N based on the value of PB7 which is MOSI
-0000F9r 1                                   ;  so there is no need to read the port to A
-0000F9r 1  10 06            bpl @gotzero    ; Did we got a 0?
-0000FBr 1                   ; got a one
-0000FBr 1  38               sec             ; rx a 1 so set carry and
-0000FCr 1  2A               rol             ; rotate into A, along with the marker bit
-0000FDr 1  90 F4            bcc @getbyte    ; if we still do not see the marker in C keep receiving
-0000FFr 1  B0 03            bcs @done       ; skip to the end // could have used BRA if 65c02
-000101r 1               
-000101r 1                   @gotzero:
-000101r 1  0A                 asl           ; rx a zero so shift one into A
-000102r 1  90 EF              bcc @getbyte  ; if we still do not see the marker in C keep receiving
-000104r 1                     ; done so fall though
-000104r 1               
-000104r 1                   @done:
-000104r 1  8C 21 7F           sty SPI_PORT  ; Set CLK, CS & MOSI low
-000107r 1  7A                 ply
-000108r 1  4C 03 FF           jmp $FF03 ; go back to soft start WOZMON
-00010Br 1                     ;rts
-00010Br 1               
-00010Br 1               ; SD_send_command:
-00010Br 1               ; Will send through SPI the 6 byte command stored in SPI_COMMAND zp variable
-00010Br 1               ; CS should be properly asserted before calling it
-00010Br 1               SD_send_command:
-00010Br 1  A0 00          ldy #0                    ; init index
-00010Dr 1  A5 40          lda SPI_COMMAND
-00010Fr 1                 @loop:
-00010Fr 1  B1 40            lda (SPI_COMMAND),y     ; load command byte
-000111r 1  20 rr rr         jsr SPI_send            ; send byte
-000114r 1  C8               iny
-000115r 1  C0 06            cpy #6
-000117r 1  D0 F6            bne @loop
-000119r 1  4C 03 FF       jmp $FF03 ; go back to soft start WOZMON
-00011Cr 1                 ;rts
-00011Cr 1               
-00011Cr 1               ; SD_wait_result:
-00011Cr 1               ; Wait for the SD card to return something other than $ff
-00011Cr 1               ; CS has to be propery asserted before calling
-00011Cr 1               ; Return: A
-00011Cr 1               ; Preserves: Y,X
-00011Cr 1               SD_wait_result:
-00011Cr 1  20 rr rr       jsr SPI_receive_byte
-00011Fr 1  C9 FF          cmp #$ff
-000121r 1  F0 F9          beq SD_wait_result
-000123r 1  4C 03 FF       jmp $FF03 ; go back to soft start WOZMON
-000126r 1                 ;rts
-000126r 1               
-000126r 1               ; delay_ms:
-000126r 1               ; Total delay including JRS/RTS = 2584 cycles = 1.401ms @ 1.8432MHz
-000126r 1               delay_ms:
-000126r 1  A0 02          ldy  #2       ; 2 cycles
-000128r 1  A2 00          ldx  #0       ; 2 cycles
-00012Ar 1                 @loop:
-00012Ar 1  CA               dex         ; 2 cycles
-00012Br 1  D0 FD            bne  @loop  ; 1277 cycles (3+2 cycles * 255 in loop) + 2 cycles at end
-00012Dr 1  88               dey         ; 510 cycles > 2 cycles * 255
-00012Er 1  D0 FA            bne  @loop  ; 2566 (1277+2+3 cycles * 2 in loop) + 2 cycles at end
-000130r 1                   ; 2584 Cycles = 4 ldx/y + 2568 lopp + 6 JSR + 6 RTS
-000130r 1  60             rts
-000131r 1               
-000131r 1               ; Complied BIN
-000131r 1               ; ADDR:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-000131r 1               ; 0300: A9 3F 8D 22 7F A9 3C 8D 20 7F 4C 03 FF DA 5A A0
-000131r 1               ; 0310: 02 A2 00 38 2A B0 0B 8E 20 7F EE 20 7F 0A D0 F5
-000131r 1               ; 0320: 80 09 8C 20 7F EE 20 7F 0A D0 EA 8C 20 7F 7A FA
-000131r 1               ; 0330: 4C 03 FF 5A A0 00 A9 01 8C 20 7F EE 20 7F 10 06
-000131r 1               ; 0340: 38 2A 90 F4 80 03 0A 90 EF 8C 20 7F 7A 4C 03 FF
-000131r 1               ; Entry points
-000131r 1               ; al 000333 .SPI_receive_byte
-000131r 1               ; al 00030D .SPI_send
-000131r 1               ; al 000300 .SPI_setupVIA1
-000131r 1               
-000131r 1               ; SD Commands
-000131r 1               ; format: Command byte, data 1, data 2, data 3, data 4, CRC
-000131r 1               cmd0_bytes:
-000131r 1  40 00 00 00    .byte $40, $00, $00, $00, $00, $95
-000135r 1  00 95        
-000137r 1               cmd8_bytes:
-000137r 1  48 00 00 01    .byte $48, $00, $00, $01, $aa, $87
-00013Br 1  AA 87        
-00013Dr 1               cmd55_bytes:
-00013Dr 1  77 00 00 00    .byte $77, $00, $00, $00, $00, $01
-000141r 1  00 01        
-000143r 1               acmd41_bytes:
-000143r 1  69 40 00 00    .byte $69, $40, $00, $00, $00, $01
-000147r 1  00 01        
-000149r 1               
-000149r 1               
-000149r 1               ; Simple test of VIA port B
-000149r 1               ; Set VIA portB
-000149r 1               ; setVIA_PortB:
-000149r 1               ;   lda #$ff ; Set all pins on port B to output
-000149r 1               ;   sta $7F22 ; VIA1_DDRB > init port B
-000149r 1               ;   lda #%10101011 ; put a bit pattern in port B
-000149r 1               ;   sta $7F20 ; VIA1_PORTB
-000149r 1               ;   jmp $FF03 ; go back to soft start WOZMON
-000149r 1               
-000149r 1                ; TESTED IN HW AND WORKING
-000149r 1                ; assembled with https://www.masswerk.at/6502/assembler.html
-000149r 1                ; 0300:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-000149r 1                ; 0300: A9 FF 8D 22 7F A9 AB 8D 20 7F 4C 03 FF
-000149r 1                ; once added you can change 306 to what you want to put in PortB and run it again
-000149r 1               
-000149r 1               
-000149r 1               
+0000C7r 1  4C 03 FF       jmp $FF03         ; go back to soft start WOZMON
+0000CAr 1                 ;rts
+0000CAr 1               
+0000CAr 1               
+0000CAr 1               ; SPI_send:
+0000CAr 1               ; send the byte in the Accumulator via SPI using MODE 0
+0000CAr 1               ; the CS line must be properly asserted before calling
+0000CAr 1               ; I keeep the set and clear in X and Y precalculated based on Jeff Laughton
+0000CAr 1               ; Return: A
+0000CAr 1               ; Preserves: Y,X
+0000CAr 1               SPI_send:
+0000CAr 1  DA             phx
+0000CBr 1  5A             phy
+0000CCr 1                 ; precalculate send a 1 (y) or a 0 (x)
+0000CCr 1  48             pha               ; save A that has the TX byte
+0000CDr 1  AD 21 7F       lda SPI_PORT      ; get current status
+0000D0r 1  29 3C          and #%00111100    ; preserve ~CS lines and set MOSI and CLK low (0)
+0000D2r 1  AA             tax               ; Save in X how to send a 0
+0000D3r 1  09 02          ora #%00000010    ; set MOSI 1
+0000D5r 1  A8             tay               ; Save in Y how to send a 1
+0000D6r 1                 ; get ready to TX
+0000D6r 1                 ; remember we will TX the bit in the carry
+0000D6r 1  68             pla
+0000D7r 1  38             sec               ; set carry bit to use as and a marker
+0000D8r 1  2A             rol               ; push the marker in A and move the bit to TX in the carry
+0000D9r 1               
+0000D9r 1                 @sendbyte:        ; send the but in the carry via SPI
+0000D9r 1  B0 0B            bcs @send_1     ; send a 1?
+0000DBr 1                   ; carry is 0 so send Y
+0000DBr 1  8E 21 7F         stx SPI_PORT    ; send MOSI to 1, clock 0
+0000DEr 1  EE 21 7F         inc SPI_PORT    ; clock it
+0000E1r 1  0A               asl             ; move the next bit to C fill with 0
+0000E2r 1  D0 F5            bne @sendbyte   ; since we have the marker once finish the 8 bits A will be 0
+0000E4r 1  F0 09            beq @done       ; branch always I cloud use a bra from the 65C02
+0000E6r 1               
+0000E6r 1                   @send_1:
+0000E6r 1                     ; carry is 1 so send Y
+0000E6r 1  8C 21 7F           sty SPI_PORT  ; send MOSI to 1, clock 0
+0000E9r 1  EE 21 7F           inc SPI_PORT  ; clock it
+0000ECr 1  0A                 asl           ; move the next bit to C fill with 0
+0000EDr 1  D0 EA              bne @sendbyte ; since we have the marker once finish the 8 bits A will be 0
+0000EFr 1                     ; fallthough, we are finished
+0000EFr 1               
+0000EFr 1                 @done:
+0000EFr 1  CE 21 7F         dec SPI_PORT    ; leave clock low
+0000F2r 1  7A               ply
+0000F3r 1  FA               plx
+0000F4r 1  4C 03 FF         jmp $FF03 ; go back to soft start WOZMON
+0000F7r 1                   ;rts
+0000F7r 1               
+0000F7r 1               ; SPI_receive_byte:
+0000F7r 1               ; Get a full byte from SPI MODE 0 and return it in A
+0000F7r 1               ; Tick the clock 8 times with MOSI high, capturing bits from MISO and returning them
+0000F7r 1               ; Will keep CS low but expect the CS to be managed outside of the subroutine
+0000F7r 1               ; Return: A
+0000F7r 1               ; Preserves: Y,X
+0000F7r 1               SPI_receive_byte:
+0000F7r 1  5A             phy
+0000F8r 1  AD 21 7F       lda SPI_PORT      ; get current status
+0000FBr 1  29 3C          and #%00111100    ; preserve ~CS lines and set MOSI and CLK low (0)
+0000FDr 1  09 02          ora #%00000010    ; preserve ~CS lines and set MOSI high
+0000FFr 1  A8             tay               ; Save in Y CLK & MOSI low constant
+000100r 1  A9 01          lda #1            ; start with a 1 as a marker, as we shift when it
+000102r 1  18             clc               ; lands in the carry it indicates we have received a full byte
+000103r 1               
+000103r 1                 @getbyte:
+000103r 1  8C 21 7F         sty SPI_PORT    ; Clock out, set CLK, CS & MOSI low
+000106r 1  EE 21 7F         inc SPI_PORT    ; Clock in > 6 cycles ~ 397 kHz
+000109r 1                                   ;  INC will also set N based on the value of PB7 which is MOSI
+000109r 1                                   ;  so there is no need to read the port to A
+000109r 1  10 06            bpl @gotzero    ; Did we got a 0?
+00010Br 1                   ; got a one
+00010Br 1  38               sec             ; rx a 1 so set carry and
+00010Cr 1  2A               rol             ; rotate into A, along with the marker bit
+00010Dr 1  90 F4            bcc @getbyte    ; if we still do not see the marker in C keep receiving
+00010Fr 1  B0 03            bcs @done       ; skip to the end // could have used BRA if 65c02
+000111r 1               
+000111r 1                   @gotzero:
+000111r 1  0A                 asl           ; rx a zero so shift one into A
+000112r 1  90 EF              bcc @getbyte  ; if we still do not see the marker in C keep receiving
+000114r 1                     ; done so fall though
+000114r 1               
+000114r 1                   @done:
+000114r 1  8C 21 7F           sty SPI_PORT  ; Set CLK, CS & MOSI low
+000117r 1  7A                 ply
+000118r 1  4C 03 FF           jmp $FF03 ; go back to soft start WOZMON
+00011Br 1                     ;rts
+00011Br 1               
+00011Br 1               ; SD_send_command:
+00011Br 1               ; Will send through SPI the 6 byte command stored in SPI_COMMAND zp variable
+00011Br 1               ; CS should be properly asserted before calling it
+00011Br 1               SD_send_command:
+00011Br 1  A0 00          ldy #0                    ; init index
+00011Dr 1  A5 40          lda SPI_COMMAND
+00011Fr 1                 @loop:
+00011Fr 1  B1 40            lda (SPI_COMMAND),y     ; load command byte
+000121r 1  20 rr rr         jsr SPI_send            ; send byte
+000124r 1  C8               iny
+000125r 1  C0 06            cpy #6
+000127r 1  D0 F6            bne @loop
+000129r 1  4C 03 FF       jmp $FF03 ; go back to soft start WOZMON
+00012Cr 1                 ;rts
+00012Cr 1               
+00012Cr 1               ; SD_wait_result:
+00012Cr 1               ; Wait for the SD card to return something other than $ff
+00012Cr 1               ; CS has to be propery asserted before calling
+00012Cr 1               ; Return: A
+00012Cr 1               ; Preserves: Y,X
+00012Cr 1               SD_wait_result:
+00012Cr 1  20 rr rr       jsr SPI_receive_byte
+00012Fr 1  C9 FF          cmp #$ff
+000131r 1  F0 F9          beq SD_wait_result
+000133r 1  4C 03 FF       jmp $FF03 ; go back to soft start WOZMON
+000136r 1                 ;rts
+000136r 1               
+000136r 1               ; delay_ms:
+000136r 1               ; Total delay including JRS/RTS = 2584 cycles = 1.401ms @ 1.8432MHz
+000136r 1               delay_ms:
+000136r 1  A0 02          ldy  #2       ; 2 cycles
+000138r 1  A2 00          ldx  #0       ; 2 cycles
+00013Ar 1                 @loop:
+00013Ar 1  CA               dex         ; 2 cycles
+00013Br 1  D0 FD            bne  @loop  ; 1277 cycles (3+2 cycles * 255 in loop) + 2 cycles at end
+00013Dr 1  88               dey         ; 510 cycles > 2 cycles * 255
+00013Er 1  D0 FA            bne  @loop  ; 2566 (1277+2+3 cycles * 2 in loop) + 2 cycles at end
+000140r 1                   ; 2584 Cycles = 4 ldx/y + 2568 lopp + 6 JSR + 6 RTS
+000140r 1  60             rts
+000141r 1               
+000141r 1               ; Complied BIN
+000141r 1               ; ADDR:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+000141r 1               ; 0300: A9 3F 8D 22 7F A9 3C 8D 20 7F 4C 03 FF DA 5A A0
+000141r 1               ; 0310: 02 A2 00 38 2A B0 0B 8E 20 7F EE 20 7F 0A D0 F5
+000141r 1               ; 0320: 80 09 8C 20 7F EE 20 7F 0A D0 EA 8C 20 7F 7A FA
+000141r 1               ; 0330: 4C 03 FF 5A A0 00 A9 01 8C 20 7F EE 20 7F 10 06
+000141r 1               ; 0340: 38 2A 90 F4 80 03 0A 90 EF 8C 20 7F 7A 4C 03 FF
+000141r 1               ; Entry points
+000141r 1               ; al 000333 .SPI_receive_byte
+000141r 1               ; al 00030D .SPI_send
+000141r 1               ; al 000300 .SPI_setupVIA1
+000141r 1               
+000141r 1               ; SD Commands
+000141r 1               ; format: Command byte, data 1, data 2, data 3, data 4, CRC
+000141r 1               cmd0_bytes:
+000141r 1  40 00 00 00    .byte $40, $00, $00, $00, $00, $95
+000145r 1  00 95        
+000147r 1               cmd8_bytes:
+000147r 1  48 00 00 01    .byte $48, $00, $00, $01, $aa, $87
+00014Br 1  AA 87        
+00014Dr 1               cmd55_bytes:
+00014Dr 1  77 00 00 00    .byte $77, $00, $00, $00, $00, $01
+000151r 1  00 01        
+000153r 1               acmd41_bytes:
+000153r 1  69 40 00 00    .byte $69, $40, $00, $00, $00, $01
+000157r 1  00 01        
+000159r 1               
+000159r 1               ; display registers
+000159r 1               CPU_STATUS:
+000159r 1  08               php                 ; push the processor status
+00015Ar 1  85 43            sta A_REG           ; save A
+00015Cr 1  86 44            stx X_REG           ; save X
+00015Er 1  84 45            sty Y_REG           ; save Y
+000160r 1  68               pla                 ; get the processor status from the stack
+000161r 1  85 46            sta SR_REG          ; save processor STatus
+000163r 1  68               pla                 ; get the Program Counter low nibble, is put there by JSR
+000164r 1  FA               plx                 ; get the PC high nibble
+000165r 1  86 40            stx PC_REG_H        ;
+000167r 1  38               sec                 ; prepare for substract
+000168r 1  E9 02            sbc #$02            ; substract 2 to get the top of the last instruction (JSR is 2 bytes)
+00016Ar 1  85 41            sta PC_REG_L        ; save the low nibble
+00016Cr 1  B0 01            bcs @done           ; same page?
+00016Er 1  CA               dex                 ; no, substract from the hi nibble
+00016Fr 1               @done:
+00016Fr 1  86 40            stx PC_REG_H        ; save PC
+000171r 1  BA               tsx                 ; put stack pointer to X
+000172r 1  86 42            stx SP_REG          ; save Stack Pointer
+000174r 1  20 rr rr         jsr PRINT_CPU       ; dump register contents
+000177r 1  A2 FF            ldx #$ff            ;
+000179r 1  9A               txs                 ; clear stack
+00017Ar 1  58               cli                 ; enable interrupts again
+00017Br 1  4C 03 FF         jmp $FF03           ; go back to soft start WOZMON
+00017Er 1                   ;rts
+00017Er 1               
+00017Er 1               RegLabel:
+00017Er 1  20 50 43 3D      .byte" PC=  SP= A=  X=  Y=  SR= ="
+000182r 1  20 20 53 50  
+000186r 1  3D 20 41 3D  
+000199r 1                   ;    " PC=0000  SP=00  A=00  X=00  Y=00  SR=00 =NVRBDIZC"
+000199r 1  20 20 20 20      .byte"                                          NVRBDIZC"
+00019Dr 1  20 20 20 20  
+0001A1r 1  20 20 20 20  
+0001CBr 1               
+0001CBr 1               
+0001CBr 1               PRINT_CPU:
+0001CBr 1  20 rr rr         jsr print_CR          ; CR + LF
+0001CEr 1  A2 FF            ldx #$ff              ; using x to cycke through the registers
+0001D0r 1  A0 FF            ldy #$ff              ; using Y to walk though the label
+0001D2r 1               @LookForEqual:
+0001D2r 1  C8               iny                   ;
+0001D3r 1  B9 rr rr         lda RegLabel,y        ;
+0001D6r 1  20 rr rr         jsr serial_out        ; print the current char
+0001D9r 1  C9 3D            cmp #$3D              ; if '=' we need to print the register
+0001DBr 1  D0 F5            bne @LookForEqual     ; not yet, keep chugging
+0001DDr 1                   ; found '=' print first REG
+0001DDr 1               @PrintReg:
+0001DDr 1  E8               inx                     ;
+0001DEr 1  E0 07            cpx   #$07              ; 7 registers total PC is H and L
+0001E0r 1  F0 0B            beq   @PrintSP          ; done with reg Pretty print the SR
+0001E2r 1  B5 40            lda   P_STATUS,x        ; Load the Reg #x value
+0001E4r 1  20 rr rr         jsr   serial_out_hex    ;
+0001E7r 1  E0 00            cpx   #$00              ; is the PC? PC is the first one stored and has Hi and Lo bytes
+0001E9r 1  D0 E7            bne   @LookForEqual     ; if x not finished go to next
+0001EBr 1  80 F0            bra   @PrintReg         ; we are in PC go print the Lo byte
+0001EDr 1               @PrintSP:
+0001EDr 1  CA               dex                     ; back to SP
+0001EEr 1  B5 40            lda   P_STATUS,x        ; get SP reg NVRBDIZC
+0001F0r 1  A2 08            ldx   #$08              ; count 8 bits
+0001F2r 1               @loop:
+0001F2r 1  A0 30            ldy #$30                ; Get Ascii zero, will use this to print
+0001F4r 1  0A               asl                     ; shift msb to C
+0001F5r 1  48               pha                     ; save the SP as is
+0001F6r 1  90 01            bcc @Print              ; print Zero
+0001F8r 1  C8               iny                     ; Print One >  Y+1 = $31 ascii one
+0001F9r 1                   @Print:
+0001F9r 1  98               tya                     ; print the ascii zero or one
+0001FAr 1  20 rr rr         jsr   serial_out        ; send it
+0001FDr 1  68               pla                     ; restore SP
+0001FEr 1  CA               dex                     ; move to next bit
+0001FFr 1  D0 F1            bne @loop                ; keep printing all bits
+000201r 1                   ; done > fall into the print_CR routine to finish
+000201r 1               print_CR:
+000201r 1  48               pha                     ; Save A
+000202r 1  A9 0D            lda   #$0D              ; "CR"
+000204r 1  20 rr rr         jsr   serial_out        ; send it
+000207r 1  A9 0A            lda   #$0A              ; "LF"
+000209r 1  20 rr rr         jsr   serial_out        ; send it
+00020Cr 1  68               pla                     ; Restore A
+00020Dr 1  60               rts
+00020Er 1               
+00020Er 1               
+00020Er 1               ; Simple test of VIA port B
+00020Er 1               ; Set VIA portB
+00020Er 1               ; setVIA_PortB:
+00020Er 1               ;   lda #$ff ; Set all pins on port B to output
+00020Er 1               ;   sta $7F22 ; VIA1_DDRB > init port B
+00020Er 1               ;   lda #%10101011 ; put a bit pattern in port B
+00020Er 1               ;   sta $7F20 ; VIA1_PORTB
+00020Er 1               ;   jmp $FF03 ; go back to soft start WOZMON
+00020Er 1               
+00020Er 1                ; TESTED IN HW AND WORKING
+00020Er 1                ; assembled with https://www.masswerk.at/6502/assembler.html
+00020Er 1                ; 0300:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+00020Er 1                ; 0300: A9 FF 8D 22 7F A9 AB 8D 20 7F 4C 03 FF
+00020Er 1                ; once added you can change 306 to what you want to put in PortB and run it again
+00020Er 1               
+00020Er 1               
+00020Er 1               
