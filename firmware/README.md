@@ -4,13 +4,15 @@ This is a BIOS for the simple6502 SBC.
 
 ## Requirements
 
-- Serial (ACIA): routines to initialize and manage the serial port.
-- VIA helper routines to interface with a 6522 for I/O
-- Memory Monitor: WozMon, why innovate?
-- BASIC: will start with MS Basic from 1976 to be period correct and have Woz and Gates code in the same ROM
-- Some LOAD/SAVE feature to put binaries in memory though serial for testing. Maybe as an updat eto WozMon??
+- [x] Serial (ACIA): routines to initialize and manage the serial port.
+- [ ] VIA helper routines to interface with a 6522 for I/O
+- [x] Memory Monitor: WozMon, why innovate?
+- [ ] BASIC: will start with MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM
+- [ ] Some LOAD/SAVE feature to put binaries in memory though serial/SD for testing. Maybe as an update to WozMon??
+- [ ] SPI Interface with VIA (in IO Card)
+- [ ] SD Card using SPI
 
-Will come up with some other stuff with 32K I have space for stuff
+Will come up with some other stuff with 32K I have space for stuff.
 
 ## Status
 
@@ -19,3 +21,4 @@ Will come up with some other stuff with 32K I have space for stuff
 - Tested and working in board rev 1.6
 - Features:
   - Wozmon
+  - Serial IO Routines
