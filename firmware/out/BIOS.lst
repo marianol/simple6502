@@ -1,6 +1,6 @@
 ca65 V2.19 - Git a861d840
-Main file   : ./BIOS.s
-Current file: ./BIOS.s
+Main file   : BIOS.s
+Current file: BIOS.s
 
 000000r 1               ; simple6502 BIOS ROM
 000000r 1               ; Written by Mariano Luna, 2024
@@ -10,7 +10,7 @@ Current file: ./BIOS.s
 000000r 1               .setcpu "65C02"           ; Thats what we got
 000000r 1               .debuginfo +
 000000r 1               
-000000r 1               .define VERSION "0.1.0"   ; Define the version number
+000000r 1               .define VERSION "0.1.3"   ; Define the version number
 000000r 1               
 000000r 1               .include "defines_simple6502.s" ; Include HW Constants and Labels
 000000r 2               ; Herdware for the simple6502 SBC board
@@ -27,49 +27,21 @@ Current file: ./BIOS.s
 000000r 2               ; 0x8000 - 0xFFFF : ROM 32K
 000000r 2               
 000000r 2               ; I/O Space
-000000r 2               ;  0x7F00 - 0x7F0F : IO_1 > SLOT 1
-000000r 2               ;  0x7F10 - 0x7F1F : IO_2 > SLOT 2
-000000r 2               ;  0x7F20 - 0x7F2F : IO_3
-000000r 2               ;  0x7F30 - 0x7F3F : IO_4
-000000r 2               ;  0x7F40 - 0x7F4F : IO_5
-000000r 2               ;  0x7F50 - 0x7F5F : IO_6
-000000r 2               ;  0x7F60 - 0x7F6F : IO_7
-000000r 2               ;  0x7F70 - 0x7F7F : IO_8 > ACIA
+000000r 2               IO_1    = $7F00 ; Slot #1 0x7F00 - 0x7F0F
+000000r 2               IO_2    = $7F10 ; Slot #2 0x7F10 - 0x7F1F
+000000r 2               IO_3    = $7F20 ; VIA #1  0x7F20 - 0x7F2F
+000000r 2               IO_4    = $7F30 ; Available 0x7F30 - 0x7F3F
+000000r 2               IO_5    = $7F40 ; Available 0x7F40 - 0x7F4F
+000000r 2               IO_6    = $7F50 ; Available 0x7F50 - 0x7F5F
+000000r 2               IO_7    = $7F60 ; Available 0x7F60 - 0x7F6F
+000000r 2               IO_8    = $7F70 ; MC68B50 ACIA  0x7F70 - 0x7F7F
 000000r 2               ;  0x7F80 - 0x7FFF : This section is not decoded 127 bytes
-000000r 2               
-000000r 2               IO_1    = $7F00 ; Slot #1
-000000r 2               IO_2    = $7F10 ; Slot #2
-000000r 2               IO_3    = $7F20 ; Reserved for VIA #1 not on board
-000000r 2               IO_4    = $7F30 ; Available
-000000r 2               IO_5    = $7F40 ; Available
-000000r 2               IO_6    = $7F50 ; Available
-000000r 2               IO_7    = $7F60 ; Available
-000000r 2               IO_8    = $7F70 ; MC68B50 on board ACIA
 000000r 2               
 000000r 2               ; -----------
 000000r 2               ; ACIA MC68B50
 000000r 2               ; The simple6502 has an serial interface on board at IO_8
+000000r 2               ; the ACIA is driven by the main clock (CLK) @ 1.8432Mhz
 000000r 2               ; RS is tied to A0 and CS0 is tied to A1
-000000r 2               ACIA_BASE     = IO_8
-000000r 2               ACIA_STATUS   = ACIA_BASE + 2   ; Read Only RS 0 + R
-000000r 2               ACIA_CONTROL  = ACIA_BASE + 2   ; Write Only RS 0 + W
-000000r 2               ACIA_DATA     = ACIA_BASE + 3   ; RS 1 + R/W > RX/TX
-000000r 2               
-000000r 2               ; ACIA Helpers
-000000r 2               
-000000r 2               ; Constants
-000000r 2               ACIA_TDRE       = %00000010    ; bitmask for TRDE
-000000r 2               ACIA_RDRF       = %00000001    ; bitmask for RDRF
-000000r 2               ACIA_RESET      = %00000011    ; 6850 reset
-000000r 2               
-000000r 2               ; ACIA Preset Configurations
-000000r 2               ; This are intended to simplify config of the CTRL register
-000000r 2               ; the onboard ACIA is driven by the main clock (CLK) @ 1.8432Mhz
-000000r 2               ACIA_CFG_115    = %00010101    ; 8-N-1, 115200bps, no IRQ - /16 CLK
-000000r 2               ACIA_CFG_115I   = %10010101    ; 8-N-1, 115200bps, IRQ - /16 CLK
-000000r 2               ACIA_CFG_28     = %00010110    ; 8-N-1, 28800bps, no IRQ - /64 CLK
-000000r 2               ACIA_CFG_28I    = %10010110    ; 8-N-1, 28800bps, IRQ - /64 CLK
-000000r 2               
 000000r 2               ; The 68B50 Control register is as follows:
 000000r 2               ; - Bit 0-1: Config clock Divider & Reset > 00: ÷1, 01: ÷16, 10: ÷64, 11: Master reset
 000000r 2               ; - Bit 2-4: Config bit length, parity & stop >
@@ -80,10 +52,31 @@ Current file: ./BIOS.s
 000000r 2               ;               > 11: RTSB low, transmits brake level, TDRE disabled
 000000r 2               ; - Bit 7: RX IRQ 0 Disabled / 1 Enabled
 000000r 2               
+000000r 2               ACIA_BASE     = IO_8
+000000r 2               ACIA_STATUS   = ACIA_BASE + 2   ; Read RS 0 + R
+000000r 2               ACIA_CONTROL  = ACIA_BASE + 2   ; Write RS 0 + W
+000000r 2               ACIA_DATA     = ACIA_BASE + 3   ; RS 1 + R/W > RX/TX
+000000r 2               
+000000r 2               ; ACIA Preset Configurations
+000000r 2               ; This are intended to simplify config of the CTRL register
+000000r 2               ACIA_CFG_115    = %00010101    ; 8-N-1, 115200bps, no IRQ - /16 CLK
+000000r 2               ACIA_CFG_115I   = %10010101    ; 8-N-1, 115200bps, IRQ - /16 CLK
+000000r 2               ACIA_CFG_28     = %00010110    ; 8-N-1, 28800bps, no IRQ - /64 CLK
+000000r 2               ACIA_CFG_28I    = %10010110    ; 8-N-1, 28800bps, IRQ - /64 CLK
+000000r 2               
+000000r 2               ; ACIA Helper Constants
+000000r 2               ACIA_TDRE       = %00000010    ; bitmask for TRDE
+000000r 2               ACIA_RDRF       = %00000001    ; bitmask for RDRF
+000000r 2               ACIA_RESET      = %00000011    ; 6850 reset
 000000r 2               
 000000r 2               ; 6522 VIA
-000000r 2               ; The VIA is not onboard in Rev 1.6 it
+000000r 2               ; The VIA is not onboard in Rev 1.6 PCB
 000000r 2               ; but reserving this I/O for the main VIA
+000000r 2               ;
+000000r 2               ; VIA Interrupt Flag Register (IFR) Reference
+000000r 2               ; BIT   |  0  |  1  |  2       |  3  |  4  |   5    |   6    |  7  |
+000000r 2               ; Desc  | CA2 | CA1 | Shift    | CB2 | CB1 | Timer2 | Timer2 | IRQ |
+000000r 2               ;                     Register
 000000r 2               VIA1_BASE   = IO_3
 000000r 2               VIA1_PORTB  = VIA1_BASE         ; $7F20
 000000r 2               VIA1_PORTA  = VIA1_BASE + 1     ; $7F21
@@ -95,11 +88,6 @@ Current file: ./BIOS.s
 000000r 2               VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
 000000r 2               VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 000000r 2               
-000000r 2               ; Interrupt Flag Register (IFR) Reference
-000000r 2               ; BIT   |  0  |  1  |  2       |  3  |  4  |   5    |   6    |  7  |
-000000r 2               ; Desc  | CA2 | CA1 | Shift    | CB2 | CB1 | Timer2 | Timer2 | IRQ |
-000000r 2               ;                     Register
-000000r 2               
 000000r 2               
 000000r 2               ; ### ZeroPage Variables ###
 000000r 2               ZP_START        = $00
@@ -110,15 +98,16 @@ Current file: ./BIOS.s
 000000r 2               PTR_TX_H        = $E8 ; HI Byte
 000000r 2               
 000000r 2               ; WozMon ZeroPage Variables
-000000r 2               ; uses $24 to $2B for its variables
-000000r 2               XAML            = $24           ;  Last "opened" location Low
-000000r 2               XAMH            = $25           ;  Last "opened" location High
-000000r 2               STL             = $26           ;  Store address Low
-000000r 2               STH             = $27           ;  Store address High
-000000r 2               L               = $28           ;  Hex value parsing Low
-000000r 2               H               = $29           ;  Hex value parsing High
-000000r 2               YSAV            = $2A           ;  Used to see if hex value is given
-000000r 2               MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+000000r 2               ; uses $24 to $2B used
+000000r 2               ; These are defined in wozmon_sbc.s here only for reference
+000000r 2               ; XAML            = $24           ;  Last "opened" location Low
+000000r 2               ; XAMH            = $25           ;  Last "opened" location High
+000000r 2               ; STL             = $26           ;  Store address Low
+000000r 2               ; STH             = $27           ;  Store address High
+000000r 2               ; L               = $28           ;  Hex value parsing Low
+000000r 2               ; H               = $29           ;  Hex value parsing High
+000000r 2               ; YSAV            = $2A           ;  Used to see if hex value is given
+000000r 2               ; MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 000000r 2               
 000000r 2               
 000000r 2               ; ### Useful Constants ###
@@ -135,182 +124,21 @@ Current file: ./BIOS.s
 000000r 1               ; -- ROM START --
 000000r 1               ;.org $8000
 000000r 1               
-000000r 1               ; JUMP Table
+000000r 1               ; ## Header ##
+000000r 1               ; the top of the rom will have a JUMP Table for the common BIOS routines
 000000r 1               .segment "HEADER"
 000000r 1               ;BASIC:        jmp COLD_START
 000000r 1  4C rr rr     MONITOR:      jmp WOZMON
 000003r 1               
-000003r 1               ; WozMon
-000003r 1               .segment "WOZMON"  ; .org $FF00
-000000r 1               .include "wozmon_sbc.s"
-000000r 2               ;  The WOZ Monitor for the Apple 1
-000000r 2               ;  Written by Steve Wozniak in 1976
-000000r 2               ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
-000000r 2               
-000000r 2               
-000000r 2               ; Page 0 Variables
-000000r 2               ; Moved to defines_simple6502.s
-000000r 2               
-000000r 2               ; Other Variables
-000000r 2               
-000000r 2               IN              = $0200         ;  Input buffer to $027F
-000000r 2               
-000000r 2               WOZMON:
-000000r 2  20 rr rr                     JSR     init_serial    ; Initialize ACIA
-000003r 2  A9 1B                        LDA     #$1B           ; Begin with escape.
-000005r 2               NOTCR:
-000005r 2  C9 08                        CMP     #$08           ; Backspace key?
-000007r 2  F0 11                        BEQ     BACKSPACE      ; Yes.
-000009r 2  C9 1B                        CMP     #$1B           ; ESC?
-00000Br 2  F0 03                        BEQ     ESCAPE         ; Yes.
-00000Dr 2  C8                           INY                    ; Advance text index.
-00000Er 2  10 0D                        BPL     NEXTCHAR       ; Auto ESC if line longer than 127.
-000010r 2               ESCAPE:
-000010r 2  A9 5C                        LDA     #$5C           ; "\".
-000012r 2  20 rr rr                     JSR     ECHO           ; Output it.
-000015r 2               GETLINE:
-000015r 2  20 rr rr                     JSR     out_crlf       ; Send CR+LF
-000018r 2  A0 01                        LDY     #$01           ; Initialize text index.
-00001Ar 2  88           BACKSPACE:      DEY                    ; Back up text index.
-00001Br 2  30 F8                        BMI     GETLINE        ; Beyond start of line, reinitialize.
-00001Dr 2               NEXTCHAR:
-00001Dr 2  AD 72 7F                     LDA     ACIA_STATUS    ; Check AICIA status.
-000020r 2  29 01                        AND     #ACIA_RDRF     ; Key ready?
-000022r 2  F0 F9                        BEQ     NEXTCHAR       ; Loop until ready.
-000024r 2  AD 73 7F                     LDA     ACIA_DATA      ; Load character. B7 will be '0'.
-000027r 2  99 00 02                     STA     IN,Y           ; Add to text buffer.
-00002Ar 2  20 rr rr                     JSR     ECHO           ; Display character.
-00002Dr 2  C9 0D                        CMP     #$0D           ; CR?
-00002Fr 2  D0 D4                        BNE     NOTCR          ; No.
-000031r 2  A0 FF                        LDY     #$FF           ; Reset text index.
-000033r 2  A9 00                        LDA     #$00           ; For XAM mode.
-000035r 2  AA                           TAX                    ; 0->X.
-000036r 2               SETBLOCK:
-000036r 2  0A                           ASL
-000037r 2               SETSTOR:
-000037r 2  0A                           ASL                    ; Leaves $7B if setting STOR mode.
-000038r 2  85 2B                        STA     MODE           ; $00 = XAM, $74 = STOR, $B8 = BLOCK XAM.
-00003Ar 2               BLSKIP:
-00003Ar 2  C8                           INY                    ; Advance text index.
-00003Br 2               NEXTITEM:
-00003Br 2  B9 00 02                     LDA     IN,Y           ; Get character.
-00003Er 2  C9 0D                        CMP     #$0D           ; CR?
-000040r 2  F0 D3                        BEQ     GETLINE        ; Yes, done this line.
-000042r 2  C9 2E                        CMP     #$2E           ; "."?
-000044r 2  90 F4                        BCC     BLSKIP         ; Skip delimiter.
-000046r 2  F0 EE                        BEQ     SETBLOCK       ; Set BLOCK XAM mode.
-000048r 2  C9 3A                        CMP     #$3A           ; ":"?
-00004Ar 2  F0 EB                        BEQ     SETSTOR        ; Yes, set STOR mode.
-00004Cr 2  C9 52                        CMP     #$52           ; "R"?
-00004Er 2  F0 3B                        BEQ     RUNPRG            ; Yes, run user program.
-000050r 2  86 28                        STX     L              ; $00 -> L.
-000052r 2  86 29                        STX     H              ;    and H.
-000054r 2  84 2A                        STY     YSAV           ; Save Y for comparison
-000056r 2               NEXTHEX:
-000056r 2  B9 00 02                     LDA     IN,Y           ; Get character for hex test.
-000059r 2  49 30                        EOR     #$30           ; Map digits to $0-9.
-00005Br 2  C9 0A                        CMP     #$0A           ; Digit?
-00005Dr 2  90 06                        BCC     DIG            ; Yes.
-00005Fr 2  69 88                        ADC     #$88           ; Map letter "A"-"F" to $FA-FF.
-000061r 2  C9 FA                        CMP     #$FA           ; Hex letter?
-000063r 2  90 11                        BCC     NOTHEX         ; No, character not hex.
-000065r 2               DIG:
-000065r 2  0A                           ASL
-000066r 2  0A                           ASL                    ; Hex digit to MSD of A.
-000067r 2  0A                           ASL
-000068r 2  0A                           ASL
-000069r 2  A2 04                        LDX     #$04           ; Shift count.
-00006Br 2               HEXSHIFT:
-00006Br 2  0A                           ASL                    ; Hex digit left, MSB to carry.
-00006Cr 2  26 28                        ROL     L              ; Rotate into LSD.
-00006Er 2  26 29                        ROL     H              ; Rotate into MSD's.
-000070r 2  CA                           DEX                    ; Done 4 shifts?
-000071r 2  D0 F8                        BNE     HEXSHIFT       ; No, loop.
-000073r 2  C8                           INY                    ; Advance text index.
-000074r 2  D0 E0                        BNE     NEXTHEX        ; Always taken. Check next character for hex.
-000076r 2               NOTHEX:
-000076r 2  C4 2A                        CPY     YSAV           ; Check if L, H empty (no hex digits).
-000078r 2  F0 96                        BEQ     ESCAPE         ; Yes, generate ESC sequence.
-00007Ar 2  24 2B                        BIT     MODE           ; Test MODE byte.
-00007Cr 2  50 10                        BVC     NOTSTOR        ; B6=0 is STOR, 1 is XAM and BLOCK XAM.
-00007Er 2  A5 28                        LDA     L              ; LSD's of hex data.
-000080r 2  81 26                        STA     (STL,X)        ; Store current 'store index'.
-000082r 2  E6 26                        INC     STL            ; Increment store index.
-000084r 2  D0 B5                        BNE     NEXTITEM       ; Get next item (no carry).
-000086r 2  E6 27                        INC     STH            ; Add carry to 'store index' high order.
-000088r 2  4C rr rr     TONEXTITEM:     JMP     NEXTITEM       ; Get next command item.
-00008Br 2               RUNPRG:
-00008Br 2  6C 24 00                     JMP     (XAML)         ; Run at current XAM index.
-00008Er 2               NOTSTOR:
-00008Er 2  30 29                        BMI     XAMNEXT        ; B7 = 0 for XAM, 1 for BLOCK XAM.
-000090r 2  A2 02                        LDX     #$02           ; Byte count.
-000092r 2  B5 27        SETADR:         LDA     L-1,X          ; Copy hex data to
-000094r 2  95 25                        STA     STL-1,X        ;  'store index'.
-000096r 2  95 23                        STA     XAML-1,X       ; And to 'XAM index'.
-000098r 2  CA                           DEX                    ; Next of 2 bytes.
-000099r 2  D0 F7                        BNE     SETADR         ; Loop unless X = 0.
-00009Br 2               NXTPRNT:
-00009Br 2  D0 12                        BNE     PRDATA         ; NE means no address to print.
-00009Dr 2  20 rr rr                     JSR     out_crlf       ; Send CR+LF
-0000A0r 2  A5 25                        LDA     XAMH           ; 'Examine index' high-order byte.
-0000A2r 2  20 rr rr                     JSR     PRBYTE         ; Output it in hex format.
-0000A5r 2  A5 24                        LDA     XAML           ; Low-order 'examine index' byte.
-0000A7r 2  20 rr rr                     JSR     PRBYTE         ; Output it in hex format.
-0000AAr 2  A9 3A                        LDA     #$3A           ; ":".
-0000ACr 2  20 rr rr                     JSR     ECHO           ; Output it.
-0000AFr 2               PRDATA:
-0000AFr 2  A9 20                        LDA     #$20           ; Blank.
-0000B1r 2  20 rr rr                     JSR     ECHO           ; Output it.
-0000B4r 2  A1 24                        LDA     (XAML,X)       ; Get data byte at 'examine index'.
-0000B6r 2  20 rr rr                     JSR     PRBYTE         ; Output it in hex format.
-0000B9r 2  86 2B        XAMNEXT:        STX     MODE           ; 0 -> MODE (XAM mode).
-0000BBr 2  A5 24                        LDA     XAML
-0000BDr 2  C5 28                        CMP     L              ; Compare 'examine index' to hex data.
-0000BFr 2  A5 25                        LDA     XAMH
-0000C1r 2  E5 29                        SBC     H
-0000C3r 2  B0 C3                        BCS     TONEXTITEM     ; Not less, so no more data to output.
-0000C5r 2  E6 24                        INC     XAML
-0000C7r 2  D0 02                        BNE     MOD8CHK        ; Increment 'examine index'.
-0000C9r 2  E6 25                        INC     XAMH
-0000CBr 2               MOD8CHK:
-0000CBr 2  A5 24                        LDA     XAML           ; Check low-order 'examine index' byte
-0000CDr 2  29 07                        AND     #$07           ; For MOD 8 = 0
-0000CFr 2  10 CA                        BPL     NXTPRNT        ; Always taken.
-0000D1r 2               PRBYTE:
-0000D1r 2  48                           PHA                    ; Save A for LSD.
-0000D2r 2  4A                           LSR
-0000D3r 2  4A                           LSR
-0000D4r 2  4A                           LSR                    ; MSD to LSD position.
-0000D5r 2  4A                           LSR
-0000D6r 2  20 rr rr                     JSR     PRHEX          ; Output hex digit.
-0000D9r 2  68                           PLA                    ; Restore A.
-0000DAr 2               PRHEX:
-0000DAr 2  29 0F                        AND     #$0F           ; Mask LSD for hex print.
-0000DCr 2  09 30                        ORA     #$30           ; Add "0".
-0000DEr 2  C9 3A                        CMP     #$3A           ; Digit?
-0000E0r 2  90 02                        BCC     ECHO           ; Yes, output it.
-0000E2r 2  69 06                        ADC     #$06           ; Add offset for letter.
-0000E4r 2               ECHO:
-0000E4r 2  48                           PHA                    ; Save A.
-0000E5r 2  8D 73 7F                     STA     ACIA_DATA      ; Output character.
-0000E8r 2  A9 FF                        LDA     #$FF           ; Initialize delay loop.
-0000EAr 2  3A           TXDELAY:        DEC                    ; Decrement A.
-0000EBr 2  D0 FD                        BNE     TXDELAY        ; Until A gets to 0.
-0000EDr 2  68                           PLA                    ; Restore A.
-0000EEr 2  60                           RTS                    ; Return.
-0000EFr 2               
-0000EFr 2               
-0000EFr 2               
-0000EFr 1               
-0000EFr 1               ; BIOS Start
-0000EFr 1               .segment "BIOS"
+000003r 1               ; ## BIOS Start ##
+000003r 1               .segment "BIOS"
 000000r 1  73 69 6D 70    .byte "simple6502 BIOS Ver: "
 000004r 1  6C 65 36 35  
 000008r 1  30 32 20 42  
 000015r 1  30 2E 31 2E    .byte VERSION
-000019r 1  30           
+000019r 1  33           
 00001Ar 1               
-00001Ar 1               ; Reset Start
+00001Ar 1               ; Reset Vector Start
 00001Ar 1               reset:
 00001Ar 1  78             sei               ; 78      disable interrupts
 00001Br 1  D8             cld               ; D8      turn decimal mode off
@@ -324,140 +152,373 @@ Current file: ./BIOS.s
 000029r 1  A9 rr          lda #>startupMessage
 00002Br 1  85 E8          sta PTR_TX_H
 00002Dr 1  20 rr rr       jsr serial_out_str
-000030r 1  4C rr rr       jmp WOZMON        ; go to the monitor
-000033r 1               
-000033r 1               
-000033r 1               ; ### Subrutines ###
-000033r 1               
-000033r 1               ; TX A Register as ASCII HEX byte
-000033r 1               ; Need to check this routine, can be optimized
-000033r 1               serial_out_hex:
-000033r 1  48             pha
-000034r 1  4A             lsr       ; process the high nibble
-000035r 1  4A             lsr
-000036r 1  4A             lsr
-000037r 1  4A             lsr
-000038r 1  29 0F          and #$0F
-00003Ar 1  09 30          ora #$30
-00003Cr 1  C9 3A          cmp #$3A
-00003Er 1  90 02          bcc @WRT   ; A is less so its less than 9 we are set
-000040r 1  69 06          adc #$06   ; A is more than 9 convert to letter
-000042r 1               @WRT:
-000042r 1  20 rr rr       jsr serial_out
-000045r 1  68             pla
-000046r 1  29 0F          and #$0F  ; process the low nibble
-000048r 1  09 30          ora #$30
-00004Ar 1  C9 3A          cmp #$3A
-00004Cr 1  90 02          bcc @WRT2
-00004Er 1  69 06          adc #$06
-000050r 1               @WRT2:
-000050r 1  20 rr rr       jsr serial_out
-000053r 1  60             rts
-000054r 1               
-000054r 1               
-000054r 1               ; Power on Self Test
-000054r 1               ; first thing will run on boot
-000054r 1               post:
-000054r 1                 ; test RAM
-000054r 1  EA             nop
-000055r 1                 ; test ROM
-000055r 1  EA             nop
-000056r 1                 ; test ACIA
-000056r 1  EA             nop
-000057r 1  60             rts
-000058r 1               
-000058r 1               ; init_serial
-000058r 1               ; Reset and set ACIA config. Init the RX buffer pointer
-000058r 1               init_serial:
-000058r 1  A9 03          lda #ACIA_RESET
-00005Ar 1  8D 72 7F       sta ACIA_CONTROL
-00005Dr 1  A9 16          lda #ACIA_CFG_28    ; 28800 8,N,1
-00005Fr 1  8D 72 7F       sta ACIA_CONTROL
-000062r 1                 ; Init the RX buffer pointers
-000062r 1  A9 00          lda #0
-000064r 1  85 E5          sta PTR_RD_RX_BUF
-000066r 1  85 E6          sta PTR_WR_RX_BUF
-000068r 1  60             rts
-000069r 1               
-000069r 1               ; TX A Register via Serial
-000069r 1               ; Sends the char in A out the ACIA RS232
-000069r 1               serial_out:
-000069r 1  48             pha
-00006Ar 1                 pool_acia: ; pulling mode until ready to TX
-00006Ar 1  AD 72 7F         lda ACIA_STATUS
-00006Dr 1  29 02            and #ACIA_TDRE     ; looking at Bit 1 TX Data Register Empty > High = Empty
-00006Fr 1  F0 F9            beq pool_acia     ; pooling loop if empty
-000071r 1  68             pla
-000072r 1  8D 73 7F       sta ACIA_DATA       ; output char in A to TDRE
-000075r 1  60             rts
-000076r 1               
-000076r 1               ; Serial Receive
-000076r 1               ; Checks if the ACIA has RX a characted and put it in A
-000076r 1               ; if a byte was received sets the carry flag, if not it clears it
-000076r 1               serial_in:
-000076r 1  AD 72 7F       lda ACIA_STATUS
-000079r 1  29 01          and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
-00007Br 1  F0 08          beq @no_data      ; nothing in the RX Buffer
-00007Dr 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
-000080r 1  20 rr rr       jsr serial_out    ; echo back
-000083r 1  38             sec
-000084r 1  60             rts
-000085r 1               @no_data:
-000085r 1  18             clc
-000086r 1  60             rts
-000087r 1               
-000087r 1               ; TX a string
-000087r 1               ; Sends the a null terminated string via RS232
-000087r 1               ; - PTR_TX is a pointer to the string memory location
-000087r 1               ; - Y register is not preserved
-000087r 1               serial_out_str:
-000087r 1  A0 00          ldy #0
-000089r 1                 @loop:
-000089r 1  B1 E7            lda (PTR_TX),y
-00008Br 1  F0 06            beq @null_found
-00008Dr 1  20 rr rr         jsr serial_out
-000090r 1  C8               iny
-000091r 1  80 F6            bra @loop
-000093r 1                 @null_found:
-000093r 1  60             rts
-000094r 1               
-000094r 1               ; ### Helper Routines ###
-000094r 1               ; Send CRLF > $0D,$0A
-000094r 1               ; does not preserve A
-000094r 1               out_crlf:
-000094r 1  A9 0D          lda #CR
-000096r 1  20 rr rr       jsr serial_out
-000099r 1  A9 0A          lda #LF
+000030r 1                ; Print woz message
+000030r 1  A9 rr          lda #<wozmonMessage
+000032r 1  85 E7          sta PTR_TX
+000034r 1  A9 rr          lda #>wozmonMessage
+000036r 1  85 E8          sta PTR_TX_H
+000038r 1  20 rr rr       jsr serial_out_str
+00003Br 1  4C rr rr       jmp WOZMON        ; go to the monitor
+00003Er 1               
+00003Er 1               
+00003Er 1               
+00003Er 1               ; ### Subrutines ###
+00003Er 1               
+00003Er 1               ; post:
+00003Er 1               ; Power on Self Test
+00003Er 1               ; first thing will run on boot
+00003Er 1               post:
+00003Er 1                 ; test RAM
+00003Er 1  EA             nop
+00003Fr 1                 ; test ROM
+00003Fr 1  EA             nop
+000040r 1                 ; test ACIA
+000040r 1  EA             nop
+000041r 1  60             rts
+000042r 1               
+000042r 1               ; ### Serial Routines ###
+000042r 1               
+000042r 1               ; init_serial:
+000042r 1               ; Initializes the on board serial interface
+000042r 1               ; Reset and set config for the ACIA. Init the RX buffer pointer
+000042r 1               init_serial:
+000042r 1  A9 03          lda #ACIA_RESET
+000044r 1  8D 72 7F       sta ACIA_CONTROL
+000047r 1  A9 16          lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
+000049r 1  8D 72 7F       sta ACIA_CONTROL
+00004Cr 1                 ; Init the RX buffer pointers
+00004Cr 1  A9 00          lda #0
+00004Er 1  85 E5          sta PTR_RD_RX_BUF
+000050r 1  85 E6          sta PTR_WR_RX_BUF
+000052r 1  60             rts
+000053r 1               
+000053r 1               ; serial_out:
+000053r 1               ; Transmit the char in the A Register via the on board
+000053r 1               ; serial ACIA TTL-RS232
+000053r 1               ; This routine uses pooling mode and will wait until the ACIA
+000053r 1               ; TX Data Register (TXDR) bit 1 is Empty to send the character.
+000053r 1               serial_out:
+000053r 1  48             pha
+000054r 1                 pool_acia: ; pulling mode until ready to TX
+000054r 1  AD 72 7F         lda ACIA_STATUS
+000057r 1  29 02            and #ACIA_TDRE     ; looking at Bit 1 TX Data Register Empty > High = Empty
+000059r 1  F0 F9            beq pool_acia     ; pooling loop if empty
+00005Br 1  68             pla
+00005Cr 1  8D 73 7F       sta ACIA_DATA       ; output char in A to TDRE
+00005Fr 1  60             rts
+000060r 1               
+000060r 1               ; serial_in:
+000060r 1               ; Takes the byte recived by that ACIA and returns it in A (acumulator)
+000060r 1               ; if a byte was received sets the Carry Flag, if not it clears it
+000060r 1               ;
+000060r 1               serial_in:
+000060r 1  AD 72 7F       lda ACIA_STATUS
+000063r 1  29 01          and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
+000065r 1  F0 08          beq @no_data      ; nothing in the RX Buffer
+000067r 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
+00006Ar 1  20 rr rr       jsr serial_out    ; echo back
+00006Dr 1  38             sec               ; we have data set Carry
+00006Er 1  60             rts
+00006Fr 1               @no_data:
+00006Fr 1  18             clc               ; no data RX clear carry
+000070r 1  60             rts
+000071r 1               
+000071r 1               ; serial_out_str:
+000071r 1               ; Sends the a null terminated string via serial
+000071r 1               ; uses the ZP variable PTR_TX (PTR_TX_L + PTR_TX_H) as the pointer
+000071r 1               ; to the string memory location
+000071r 1               ; - Y register is not preserved
+000071r 1               serial_out_str:
+000071r 1  A0 00          ldy #0
+000073r 1                 @loop:
+000073r 1  B1 E7            lda (PTR_TX),y
+000075r 1  F0 06            beq @null_found
+000077r 1  20 rr rr         jsr serial_out
+00007Ar 1  C8               iny
+00007Br 1  80 F6            bra @loop
+00007Dr 1                 @null_found:
+00007Dr 1  60             rts
+00007Er 1               
+00007Er 1               ; # Helper Routines for Serial comms
+00007Er 1               
+00007Er 1               ; serial_out_hex:
+00007Er 1               ; Transmit the value of the A Register as ASCII HEX byte
+00007Er 1               ; Need to check this routine, can be optimized
+00007Er 1               serial_out_hex:
+00007Er 1  48             pha             ; keep the register for further manipulation
+00007Fr 1  4A             lsr             ; process the high nibble (MSD) shifting it to the low nibble
+000080r 1  4A             lsr
+000081r 1  4A             lsr
+000082r 1  4A             lsr
+000083r 1  29 0F          and #$0F        ; Mask LSD for hex print.
+000085r 1  09 30          ora #$30        ; this is like adding $30 > ASCII numbers start at $30 the OR %00110000 sets the high bits shifting the hex value to the right place.
+000087r 1  C9 3A          cmp #$3A        ; is less than '9' $39
+000089r 1  90 02          bcc @done       ; A is < 9 ($3A) so we already have the ASCII of the number
+00008Br 1  69 06          adc #$06        ; A is > 9 ($3A) so add 6 + carry (carry is set by CMP) to offset for letters (A $41 - F $46)
+00008Dr 1               @done:
+00008Dr 1  20 rr rr       jsr serial_out  ; send the MSD since its ready
+000090r 1  68             pla             ; get the original value back
+000091r 1  29 0F          and #$0F        ; process the low nibble (LSD)
+000093r 1  09 30          ora #$30
+000095r 1  C9 3A          cmp #$3A
+000097r 1  90 02          bcc @done2
+000099r 1  69 06          adc #$06
+00009Br 1               @done2:
 00009Br 1  20 rr rr       jsr serial_out
 00009Er 1  60             rts
 00009Fr 1               
-00009Fr 1               ; ROM Data
-00009Fr 1               ; Startup Messages
-00009Fr 1               startupMessage:
-00009Fr 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
-0000A3r 1  23 20 53 69  
-0000A7r 1  6D 70 6C 65  
-0000B8r 1  30 2E 31 2E    .byte VERSION
-0000BCr 1  30           
-0000BDr 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
-0000C1r 1  0D 0A 00       .byte $0D,$0A,$00
-0000C4r 1               
-0000C4r 1               
-0000C4r 1               ; ### Interrupt Handlers ###
-0000C4r 1               
-0000C4r 1               ; IRQ Handler
-0000C4r 1               irq_handler:
-0000C4r 1  EA               nop       ; EA
-0000C5r 1  40               rti       ; 40
-0000C6r 1               
-0000C6r 1               ; NMI Handler Vector
-0000C6r 1               nmi_handler:
-0000C6r 1  EA               nop       ; EA
-0000C7r 1  40               rti       ; 40
-0000C8r 1               
-0000C8r 1               ; -- VECTORS --
-0000C8r 1               .segment "RESETVECTORS"
-000000r 1                 ;.org $fffa
+00009Fr 1               ; out_crlf
+00009Fr 1               ; Transmit a CR+LF > $0D,$0A
+00009Fr 1               ; Preserves all registers
+00009Fr 1               out_crlf:
+00009Fr 1  48             pha
+0000A0r 1  A9 0D          lda #CR
+0000A2r 1  20 rr rr       jsr serial_out
+0000A5r 1  A9 0A          lda #LF
+0000A7r 1  20 rr rr       jsr serial_out
+0000AAr 1  68             pla
+0000ABr 1  60             rts
+0000ACr 1               
+0000ACr 1               ; ROM Data
+0000ACr 1               ; Startup Messages
+0000ACr 1               startupMessage:
+0000ACr 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
+0000B0r 1  23 20 53 69  
+0000B4r 1  6D 70 6C 65  
+0000C5r 1  30 2E 31 2E    .byte VERSION
+0000C9r 1  33           
+0000CAr 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
+0000CEr 1  0D 0A 00       .byte $0D,$0A,$00
+0000D1r 1               wozmonMessage:
+0000D1r 1  0D 0A 3E 20    .byte	CR,LF,"> WozMon <"
+0000D5r 1  57 6F 7A 4D  
+0000D9r 1  6F 6E 20 3C  
+0000DDr 1  0D 0A 00       .byte CR,LF,$00
+0000E0r 1               
+0000E0r 1               ; ### Interrupt Handlers ###
+0000E0r 1               
+0000E0r 1               ; # IRQ Handler
+0000E0r 1               irq_handler:
+0000E0r 1  EA               nop       ; EA
+0000E1r 1                   ; BIT  VIA1_STATUS   ; Check 6522 VIA1's status register without loading.
+0000E1r 1                   ; BMI  SERVICE_VIA1  ; If it caused the interrupt, branch to service it.
+0000E1r 1                   ; BIT  VIA2_STATUS   ; Otherwise, check VIA2's status register.
+0000E1r 1                   ; BMI  SERVICE_VIA2  ; If that one did the interrupt, branch to service it.
+0000E1r 1                   ; JMP  SERVICE_ACIA  ; If both VIAs say "not me," it had to be the 6551 ACIA.
+0000E1r 1  40               rti       ; 40
+0000E2r 1               
+0000E2r 1               ; # NMI Handler Vector
+0000E2r 1               nmi_handler:
+0000E2r 1  EA               nop       ; EA
+0000E3r 1  40               rti       ; 40
+0000E4r 1               
+0000E4r 1               ; -- MONITOR --
+0000E4r 1               ; .org $FF00
+0000E4r 1               ; ## WozMon ##
+0000E4r 1               .segment "WOZMON"
+000000r 1               .include "wozmon_sbc.s"
+000000r 2               ;  The WOZ Monitor for the Apple 1
+000000r 2               ;  Written by Steve Wozniak in 1976
+000000r 2               ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
+000000r 2               ;
+000000r 2               ; Changelog:
+000000r 2               ; - 5 bytes less
+000000r 2               ; - updated to use BIOS ruitines fro Serial I/O
+000000r 2               ; - moved Variables to defines_[platfrom].s
+000000r 2               ; - updates to use standard ASCII (not Apple 1 bit 7 set)
+000000r 2               ; - input now case insensitive
+000000r 2               ; -
+000000r 2               
+000000r 2               ; TEST PROGRAM
+000000r 2               ; 0400: A9 20 20 77 80 18 69 01 C9 7F 30 F6 4C 00 04
+000000r 2               ;
+000000r 2               ;                            * = $0400
+000000r 2               ; 0400   A9 20      L0400     LDA #$20
+000000r 2               ; 0402   20 77 80   L0402     JSR $8077
+000000r 2               ; 0405   18                   CLC
+000000r 2               ; 0406   69 01                ADC #$01
+000000r 2               ; 0408   C9 7F                CMP #$7F
+000000r 2               ; 040A   30 F6                BMI L0402
+000000r 2               ; 040C   4C 00 04             JMP L0400
+000000r 2               ;                             .END
+000000r 2               ; Page 0 Variables
+000000r 2               XAML            = $24           ;  Last "opened" location Low
+000000r 2               XAMH            = $25           ;  Last "opened" location High
+000000r 2               STL             = $26           ;  Store address Low
+000000r 2               STH             = $27           ;  Store address High
+000000r 2               L               = $28           ;  Hex value parsing Low
+000000r 2               H               = $29           ;  Hex value parsing High
+000000r 2               YSAV            = $2A           ;  Used to see if hex value is given
+000000r 2               MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+000000r 2               
+000000r 2               ; Other Variables
+000000r 2               
+000000r 2               IN              = $0200         ;  Input buffer to $027F
+000000r 2               
+000000r 2               WOZMON:
+000000r 2                               ; Run out of mem so assuming serial is inizialized by BIOS
+000000r 2                               ; with only one of this JSRs 'WOZMON' overflows the
+000000r 2                               ; 'MONITOR' segment memory area by 1 byte
+000000r 2                               ; if you are running this independently of the bios you
+000000r 2                               ; will need to uncomment the next 2 lines
+000000r 2                               ; JSR     init_serial    ; Initialize ACIA
+000000r 2                               ; JSR     out_crlf       ; send CR+LF
+000000r 2  A9 1B        WARMWOZ:        LDA     #$1B           ; Begin with escape.
+000002r 2               NOTCR:
+000002r 2  C9 08                        CMP     #$08           ; Backspace key? * Changed to the actual BS key
+000004r 2  F0 11                        BEQ     BACKSPACE      ; Yes.
+000006r 2  C9 1B                        CMP     #$1B           ; ESC?
+000008r 2  F0 03                        BEQ     ESCAPE         ; Yes.
+00000Ar 2  C8                           INY                    ; Advance text index.
+00000Br 2  10 0D                        BPL     NEXTCHAR       ; Auto ESC if line longer than 127.
+00000Dr 2               ESCAPE:
+00000Dr 2  A9 5C                        LDA     #$5C           ; "\".
+00000Fr 2  20 rr rr                     JSR     ECHO           ; Output it.
+000012r 2               GETLINE:
+000012r 2  20 rr rr                     JSR     out_crlf       ; * Send CR+LF
+000015r 2  A0 01                        LDY     #$01           ; Initialize text index.
+000017r 2  88           BACKSPACE:      DEY                    ; Back up text index.
+000018r 2  30 F8                        BMI     GETLINE        ; Beyond start of line, reinitialize.
+00001Ar 2               NEXTCHAR:
+00001Ar 2  AD 72 7F                     LDA     ACIA_STATUS    ; Check AICIA status.
+00001Dr 2  29 01                        AND     #ACIA_RDRF     ; Key ready?
+00001Fr 2  F0 F9                        BEQ     NEXTCHAR       ; Loop until ready.
+000021r 2  AD 73 7F                     LDA     ACIA_DATA      ; Load character. B7 will be '0'.
+000024r 2  C9 60                        CMP     #$60           ;* Lower case?
+000026r 2  30 02                        BMI     GO_ON          ;* Nope, go on
+000028r 2  29 5F                        AND     #$5F           ;* convert to Upper case ASCII
+00002Ar 2  99 00 02     GO_ON:          STA     IN,Y           ; Add to text buffer.
+00002Dr 2  20 rr rr                     JSR     ECHO           ; Display character.
+000030r 2  C9 0D                        CMP     #$0D           ; CR?
+000032r 2  D0 CE                        BNE     NOTCR          ; No.
+000034r 2  A0 FF                        LDY     #$FF           ; Reset text index.
+000036r 2  A9 00                        LDA     #$00           ; For XAM mode.
+000038r 2  AA                           TAX                    ; 0->X.
+000039r 2               SETBLOCK:
+000039r 2  0A                           ASL
+00003Ar 2               SETSTOR:
+00003Ar 2  0A                           ASL                    ; Leaves $7B if setting STOR mode.
+00003Br 2  85 2B                        STA     MODE           ; $00 = XAM, $74 = STOR, $B8 = BLOCK XAM.
+00003Dr 2               BLSKIP:
+00003Dr 2  C8                           INY                    ; Advance text index.
+00003Er 2               NEXTITEM:
+00003Er 2  B9 00 02                     LDA     IN,Y           ; Get character.
+000041r 2  C9 0D                        CMP     #$0D           ; CR?
+000043r 2  F0 CD                        BEQ     GETLINE        ; Yes, done this line.
+000045r 2  C9 2E                        CMP     #$2E           ; "."?
+000047r 2  90 F4                        BCC     BLSKIP         ; Skip delimiter.
+000049r 2  F0 EE                        BEQ     SETBLOCK       ; Set BLOCK XAM mode.
+00004Br 2  C9 3A                        CMP     #$3A           ; ":"?
+00004Dr 2  F0 EB                        BEQ     SETSTOR        ; Yes, set STOR mode.
+00004Fr 2  C9 52                        CMP     #$52           ; "R"?
+000051r 2  F0 3B                        BEQ     RUNPRG            ; Yes, run user program.
+000053r 2  86 28                        STX     L              ; $00 -> L. * Woz is relying on X being zero
+000055r 2  86 29                        STX     H              ;    and H.
+000057r 2  84 2A                        STY     YSAV           ; Save Y for comparison
+000059r 2               NEXTHEX:
+000059r 2  B9 00 02                     LDA     IN,Y           ; Get character for hex test.
+00005Cr 2  49 30                        EOR     #$30           ; Map digits to $0-9.
+00005Er 2  C9 0A                        CMP     #$0A           ; Digit?
+000060r 2  90 06                        BCC     DIG            ; Yes.
+000062r 2  69 88                        ADC     #$88           ; Map letter "A"-"F" to $FA-FF.
+000064r 2  C9 FA                        CMP     #$FA           ; Hex letter?
+000066r 2  90 11                        BCC     NOTHEX         ; No, character not hex.
+000068r 2               DIG:
+000068r 2  0A                           ASL
+000069r 2  0A                           ASL                    ; Hex digit to MSD of A.
+00006Ar 2  0A                           ASL
+00006Br 2  0A                           ASL
+00006Cr 2  A2 04                        LDX     #$04           ; Shift count.
+00006Er 2               HEXSHIFT:
+00006Er 2  0A                           ASL                    ; Hex digit left, MSB to carry.
+00006Fr 2  26 28                        ROL     L              ; Rotate into LSD.
+000071r 2  26 29                        ROL     H              ; Rotate into MSD's.
+000073r 2  CA                           DEX                    ; Done 4 shifts?
+000074r 2  D0 F8                        BNE     HEXSHIFT       ; No, loop.
+000076r 2  C8                           INY                    ; Advance text index.
+000077r 2  D0 E0                        BNE     NEXTHEX        ; Always taken. Check next character for hex.
+000079r 2               NOTHEX:
+000079r 2  C4 2A                        CPY     YSAV           ; Check if L, H empty (no hex digits).
+00007Br 2  F0 90                        BEQ     ESCAPE         ; Yes, generate ESC sequence.
+00007Dr 2  24 2B                        BIT     MODE           ; Test MODE byte.
+00007Fr 2  50 16                        BVC     NOTSTOR        ; B6=0 is STOR, 1 is XAM and BLOCK XAM.
+000081r 2  A5 28                        LDA     L              ; LSD's of hex data.
+000083r 2  81 26                        STA     (STL,X)        ; Store current 'store index'.
+000085r 2  E6 26                        INC     STL            ; Increment store index.
+000087r 2  D0 B5                        BNE     NEXTITEM       ; Get next item (no carry).
+000089r 2  E6 27                        INC     STH            ; Add carry to 'store index' high order.
+00008Br 2  4C rr rr     TONEXTITEM:     JMP     NEXTITEM       ; Get next command item.
+00008Er 2               ; Update to allow R to run programs with JSR
+00008Er 2               ; this enables the program to return to monitor on RTS
+00008Er 2               RUNPRG:
+00008Er 2  20 rr rr                     JSR     RUNSUB         ;* do a JSR to the JMP to Address we want to run.
+000091r 2  4C rr rr                     JMP     WARMWOZ        ;* if the program does an RTS we warm start WozMON.
+000094r 2               RUNSUB:                                ; added a new label to allow for the JSR hack
+000094r 2  6C 24 00                     JMP     (XAML)         ; Run at current XAM index.
+000097r 2               NOTSTOR:
+000097r 2  30 29                        BMI     XAMNEXT        ; B7 = 0 for XAM, 1 for BLOCK XAM.
+000099r 2  A2 02                        LDX     #$02           ; Byte count.
+00009Br 2  B5 27        SETADR:         LDA     L-1,X          ; Copy hex data to
+00009Dr 2  95 25                        STA     STL-1,X        ;  'store index'.
+00009Fr 2  95 23                        STA     XAML-1,X       ; And to 'XAM index'.
+0000A1r 2  CA                           DEX                    ; Next of 2 bytes.
+0000A2r 2  D0 F7                        BNE     SETADR         ; Loop unless X = 0.
+0000A4r 2               NXTPRNT:
+0000A4r 2  D0 12                        BNE     PRDATA         ; NE means no address to print.
+0000A6r 2  20 rr rr                     JSR     out_crlf       ; Send CR+LF
+0000A9r 2  A5 25                        LDA     XAMH           ; 'Examine index' high-order byte.
+0000ABr 2  20 rr rr                     JSR     PRBYTE         ; Output it in hex format.
+0000AEr 2  A5 24                        LDA     XAML           ; Low-order 'examine index' byte.
+0000B0r 2  20 rr rr                     JSR     PRBYTE         ; Output it in hex format.
+0000B3r 2  A9 3A                        LDA     #$3A           ; ":".
+0000B5r 2  20 rr rr                     JSR     ECHO           ; Output it.
+0000B8r 2               PRDATA:
+0000B8r 2  A9 20                        LDA     #$20           ; Blank.
+0000BAr 2  20 rr rr                     JSR     ECHO           ; Output it.
+0000BDr 2  A1 24                        LDA     (XAML,X)       ; Get data byte at 'examine index'.
+0000BFr 2  20 rr rr                     JSR     PRBYTE         ; Output it in hex format.
+0000C2r 2  86 2B        XAMNEXT:        STX     MODE           ; 0 -> MODE (XAM mode).
+0000C4r 2  A5 24                        LDA     XAML
+0000C6r 2  C5 28                        CMP     L              ; Compare 'examine index' to hex data.
+0000C8r 2  A5 25                        LDA     XAMH
+0000CAr 2  E5 29                        SBC     H
+0000CCr 2  B0 BD                        BCS     TONEXTITEM     ; Not less, so no more data to output.
+0000CEr 2  E6 24                        INC     XAML
+0000D0r 2  D0 02                        BNE     MOD8CHK        ; Increment 'examine index'.
+0000D2r 2  E6 25                        INC     XAMH
+0000D4r 2               MOD8CHK:
+0000D4r 2  A5 24                        LDA     XAML           ; Check low-order 'examine index' byte
+0000D6r 2  29 07                        AND     #$07           ; For MOD 8 = 0
+0000D8r 2  10 CA                        BPL     NXTPRNT        ; Always taken.
+0000DAr 2               PRBYTE:
+0000DAr 2  48                           PHA                    ; Save A for LSD.
+0000DBr 2  4A                           LSR
+0000DCr 2  4A                           LSR
+0000DDr 2  4A                           LSR                    ; MSD to LSD position.
+0000DEr 2  4A                           LSR
+0000DFr 2  20 rr rr                     JSR     PRHEX          ; Output hex digit.
+0000E2r 2  68                           PLA                    ; Restore A.
+0000E3r 2               PRHEX:
+0000E3r 2  29 0F                        AND     #$0F           ; Mask LSD for hex print.
+0000E5r 2  09 30                        ORA     #$30           ; Add "0".
+0000E7r 2  C9 3A                        CMP     #$3A           ; Digit?
+0000E9r 2  90 02                        BCC     ECHO           ; Yes, output it.
+0000EBr 2  69 06                        ADC     #$06           ; Add offset for letter.
+0000EDr 2               ECHO:
+0000EDr 2  48                           PHA                    ; Save A.
+0000EEr 2  8D 73 7F                     STA     ACIA_DATA      ; Output character.
+0000F1r 2  A9 FF                        LDA     #$FF           ; Initialize delay loop.
+0000F3r 2  3A           TXDELAY:        DEC                    ; Decrement A.
+0000F4r 2  D0 FD                        BNE     TXDELAY        ; Until A gets to 0.
+0000F6r 2  68                           PLA                    ; Restore A.
+0000F7r 2  60                           RTS                    ; Return.
+0000F8r 2               
+0000F8r 2               
+0000F8r 2               
+0000F8r 1               
+0000F8r 1               ; -- VECTORS --
+0000F8r 1               ;.org $fffa
+0000F8r 1               .segment "RESETVECTORS"
 000000r 1  rr rr          .word nmi_handler ; NMI
 000002r 1  rr rr          .word reset       ; RESET
 000004r 1  rr rr          .word irq_handler ; IRQ/BRK

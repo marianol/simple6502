@@ -1,20 +1,52 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
+;
+; Changelog:
+; - 5 bytes less
+; - updated to use BIOS ruitines for Serial int and some I/O
+; - moved Variables to defines_[platfrom].s
+; - updates to use standard ASCII (not Apple 1 bit 7 set) 
+; - input now case insensitive
+; - 
 
-
+; TEST PROGRAM
+; 0400: A9 20 20 77 80 18 69 01 C9 7F 30 F6 4C 00 04
+;
+;                            * = $0400
+; 0400   A9 20      L0400     LDA #$20
+; 0402   20 77 80   L0402     JSR $8077
+; 0405   18                   CLC
+; 0406   69 01                ADC #$01
+; 0408   C9 7F                CMP #$7F
+; 040A   30 F6                BMI L0402
+; 040C   4C 00 04             JMP L0400
+;                             .END
 ; Page 0 Variables
-; Moved to defines_simple6502.s
+XAML            = $24           ;  Last "opened" location Low
+XAMH            = $25           ;  Last "opened" location High
+STL             = $26           ;  Store address Low
+STH             = $27           ;  Store address High
+L               = $28           ;  Hex value parsing Low
+H               = $29           ;  Hex value parsing High
+YSAV            = $2A           ;  Used to see if hex value is given
+MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 ; Other Variables
 
 IN              = $0200         ;  Input buffer to $027F
 
 WOZMON:
-                JSR     init_serial    ; Initialize ACIA
-                LDA     #$1B           ; Begin with escape. 
+                ; Run out of mem so assuming serial is inizialized by BIOS
+                ; with only one of this JSRs 'WOZMON' overflows the
+                ; 'MONITOR' segment memory area by 1 byte
+                ; if you are running this independently of the bios you
+                ; will need to uncomment the next line or 2 lines if you fancy a CR + LF
+                ; JSR     init_serial    ; Initialize ACIA
+                ; JSR     out_crlf       ; send CR+LF
+WARMWOZ:        LDA     #$1B           ; Begin with escape. 
 NOTCR:
-                CMP     #$08           ; Backspace key?
+                CMP     #$08           ; Backspace key? * Changed to the actual BS key
                 BEQ     BACKSPACE      ; Yes.
                 CMP     #$1B           ; ESC?
                 BEQ     ESCAPE         ; Yes.
@@ -24,7 +56,7 @@ ESCAPE:
                 LDA     #$5C           ; "\".
                 JSR     ECHO           ; Output it.
 GETLINE:
-                JSR     out_crlf       ; Send CR+LF
+                JSR     out_crlf       ; * Send CR+LF
                 LDY     #$01           ; Initialize text index.
 BACKSPACE:      DEY                    ; Back up text index.
                 BMI     GETLINE        ; Beyond start of line, reinitialize.
@@ -33,7 +65,10 @@ NEXTCHAR:
                 AND     #ACIA_RDRF     ; Key ready?
                 BEQ     NEXTCHAR       ; Loop until ready.
                 LDA     ACIA_DATA      ; Load character. B7 will be '0'.
-                STA     IN,Y           ; Add to text buffer.
+                CMP     #$60           ;* Lower case?
+                BMI     GO_ON          ;* Nope, go on
+                AND     #$5F           ;* convert to Upper case ASCII
+GO_ON:          STA     IN,Y           ; Add to text buffer.
                 JSR     ECHO           ; Display character.
                 CMP     #$0D           ; CR?
                 BNE     NOTCR          ; No.
@@ -58,7 +93,7 @@ NEXTITEM:
                 BEQ     SETSTOR        ; Yes, set STOR mode.
                 CMP     #$52           ; "R"?
                 BEQ     RUNPRG            ; Yes, run user program.
-                STX     L              ; $00 -> L.
+                STX     L              ; $00 -> L. * Woz is relying on X being zero
                 STX     H              ;    and H.
                 STY     YSAV           ; Save Y for comparison
 NEXTHEX:
@@ -94,7 +129,12 @@ NOTHEX:
                 BNE     NEXTITEM       ; Get next item (no carry).
                 INC     STH            ; Add carry to 'store index' high order.
 TONEXTITEM:     JMP     NEXTITEM       ; Get next command item.
+; Update to allow R to run programs with JSR 
+; this enables the program to return to monitor on RTS
 RUNPRG:
+                JSR     RUNSUB         ;* do a JSR to the JMP to Address we want to run.
+                JMP     WARMWOZ        ;* if the program does an RTS we warm start WozMON.
+RUNSUB:                                ; added a new label to allow for the JSR hack
                 JMP     (XAML)         ; Run at current XAM index.
 NOTSTOR:
                 BMI     XAMNEXT        ; B7 = 0 for XAM, 1 for BLOCK XAM.
@@ -129,7 +169,7 @@ XAMNEXT:        STX     MODE           ; 0 -> MODE (XAM mode).
                 INC     XAMH
 MOD8CHK:
                 LDA     XAML           ; Check low-order 'examine index' byte
-                AND     #$07           ; For MOD 8 = 0
+                AND     #$0F           ; * Changed to diesplay 16 bytes per line AND #$07 ; For MOD 8 = 0  #%0000.0111
                 BPL     NXTPRNT        ; Always taken.
 PRBYTE:
                 PHA                    ; Save A for LSD.
