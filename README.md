@@ -16,6 +16,10 @@ The project is organized as follows:
     - /schematics PDF schematics and renders
     - /gallery images of the completed PCBs
     - /3dmodels Kicad 3D models
+- /firmware
+    - BIOS and ROM for the simple6502, check the ReadMe
+- /docs
+    - docs will be here for now only datasheets 
 
 ## Design
 
