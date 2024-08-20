@@ -4,6 +4,19 @@ My own take on a simple 6502 single board computer, inspired on Garth Wilson's e
 
 This project exists because of scope creep on my YAsixfive02 project, which is in its 10000 iteration. Which I don't think will ever end.
 
+## Organization
+
+The project is organized as follows:
+
+- /hardware
+    - /simple6502 The SBC computer motherboard a.k.a The Project
+    - /IO_Card A 6522 IO card with 2 VIAs
+    - /protoCard A protoboard card for the simple6502 to build your projects
+    - /6502motherboard An untested but complete card connector backplane motherboard. I decided to abandon this in favor of the SBC, i may pick it up later
+    - /schematics PDF schematics and renders
+    - /gallery images of the completed PCBs
+    - /3dmodels Kicad 3D models
+
 ## Design
 
 The goal is to build a simple 6502 SBC with RAM, ROM, IO decoding and a serial interface. An expansion  bus will carry all the address, data and supporting lines to allow adding IO and other hardware expansions. The PCB will be kept at 100x100mm to reduce cost.
