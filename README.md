@@ -25,7 +25,7 @@ The project is organized as follows:
 
 The goal is to build a simple 6502 SBC with RAM, ROM, IO decoding and a serial interface. An expansion  bus will carry all the address, data and supporting lines to allow adding IO and other hardware expansions. The PCB will be kept at 100x100mm to reduce cost.
 
-For the serial interface I settled on the Motorolla 68B50 ACIA, just because I had one lying around. This forced using a 1.8432MHz clock that drives both the CPU and the ACIA. I added a header for an FTDI card to convert the TTL serial to USB. The ACIA is connected to the IO_8 line locating it at 0x7F70 in the memory map.
+For the serial interface I settled on the Motorola 68B50 ACIA, just because I had one lying around. This forced using a 1.8432MHz clock that drives both the CPU and the ACIA. I added a header for an FTDI card to convert the TTL serial to USB. The ACIA is connected to the IO_8 line locating it at 0x7F70 in the memory map.
 The jumper J2 next to the header allows you to run the board with the USB 5v rail from the FTDI. IMPORTANT!! This overrides the power switch SW2 and there is no protection built into the board so you should not connect this jumper at the same time as the 5V barrel J7 or the AUX Power header J8.
 The bus Slot connectors have pin 27 tied to IO_1 and IO_2 respectively allowing to design expansion cards that can be mapped into memory based on where they are plugged. You still have access to IO_3 to IO_7 in case you want to use those. The Expansion Port J1 is intended to be used with a 40 pin ribbon for ease of development of prototype boards.
 
