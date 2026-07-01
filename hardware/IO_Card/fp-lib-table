@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "6502_Components") (type "KiCad") (uri "/Users/marianol/Documents/workspace/repos/simple6502/hardware/6502_Kicad_Library/6502_Components.pretty") (options "") (descr ""))
+)
