@@ -21,3 +21,4 @@ fp-info-cache
 
 #backups
 *-backups/
+.history/
