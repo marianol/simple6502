@@ -10,7 +10,7 @@ Current file: BIOS.s
 000000r 1               .setcpu "65C02"           ; Thats what we got
 000000r 1               .debuginfo +
 000000r 1               
-000000r 1               .define VERSION "0.2.0"   ; Define the version number
+000000r 1               .define VERSION "0.3.0"   ; Define the version number
 000000r 1               
 000000r 1               .include "defines_simple6502.s" ; Include HW Constants and Labels
 000000r 2               ; Herdware for the simple6502 SBC board
@@ -160,7 +160,7 @@ Current file: BIOS.s
 000000r 1  73 69 6D 70    .byte "simple6502 BIOS Ver: "
 000004r 1  6C 65 36 35  
 000008r 1  30 32 20 42  
-000015r 1  30 2E 32 2E    .byte VERSION
+000015r 1  30 2E 33 2E    .byte VERSION
 000019r 1  30           
 00001Ar 1               
 00001Ar 1               ; Reset Vector Start
@@ -567,7 +567,7 @@ Current file: BIOS.s
 0001F9r 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
 0001FDr 1  23 20 53 69  
 000201r 1  6D 70 6C 65  
-000212r 1  30 2E 32 2E    .byte VERSION
+000212r 1  30 2E 33 2E    .byte VERSION
 000216r 1  30           
 000217r 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
 00021Br 1  0D 0A 00       .byte $0D,$0A,$00

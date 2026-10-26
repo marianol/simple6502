@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.2.0"   ; Define the version number
+.define VERSION "0.3.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
