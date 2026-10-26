@@ -88,6 +88,15 @@ PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
 PTR_TX          = $E7 ; Transmit String Pointer
 PTR_TX_L        = $E7 ; LO Byte
 PTR_TX_H        = $E8 ; HI Byte
+; Intel HEX load/save (BIOS) scratch
+IHEX_ADDR       = $30 ; record load address (LO/HI)
+IHEX_ADDR_L     = $30
+IHEX_ADDR_H     = $31
+IHEX_LEN        = $32 ; record byte count
+IHEX_TYPE       = $33 ; record type (00 data, 01 EOF)
+IHEX_SUM        = $34 ; running checksum accumulator
+IHEX_TMP        = $35 ; general scratch
+
 ; used by Mon Print Registers
 P_STATUS        = $40
 PC_REG_H        = P_STATUS
@@ -99,16 +108,16 @@ Y_REG           = P_STATUS + 5
 SR_REG          = P_STATUS + 6
 
 ; WozMon ZeroPage Variables
-; uses $24 to $2B used 
-; These are defined in wozmon_sbc.s here only for reference
-; XAML            = $24           ;  Last "opened" location Low
-; XAMH            = $25           ;  Last "opened" location High
-; STL             = $26           ;  Store address Low
-; STH             = $27           ;  Store address High
-; L               = $28           ;  Hex value parsing Low
-; H               = $29           ;  Hex value parsing High
-; YSAV            = $2A           ;  Used to see if hex value is given
-; MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+; uses $24 to $2B. Defined here (included first) so BIOS routines that share
+; these locations with WozMon resolve them as zero page.
+XAML            = $24           ;  Last "opened" location Low
+XAMH            = $25           ;  Last "opened" location High
+STL             = $26           ;  Store address Low
+STH             = $27           ;  Store address High
+L               = $28           ;  Hex value parsing Low
+H               = $29           ;  Hex value parsing High
+YSAV            = $2A           ;  Used to see if hex value is given
+MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 
 ; ### Useful Constants ###

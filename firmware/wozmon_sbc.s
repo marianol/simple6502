@@ -22,15 +22,8 @@
 ; 040A   30 F6                BMI L0402
 ; 040C   4C 00 04             JMP L0400
 ;                             .END
-; Page 0 Variables
-XAML            = $24           ;  Last "opened" location Low
-XAMH            = $25           ;  Last "opened" location High
-STL             = $26           ;  Store address Low
-STH             = $27           ;  Store address High
-L               = $28           ;  Hex value parsing Low
-H               = $29           ;  Hex value parsing High
-YSAV            = $2A           ;  Used to see if hex value is given
-MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+; Page 0 Variables (XAML..MODE) are defined in defines_simple6502.s so that
+; the BIOS Intel HEX routines can share them as zero page.
 
 ; Other Variables
 
@@ -91,8 +84,8 @@ NEXTITEM:
                 BEQ     SETBLOCK       ; Set BLOCK XAM mode.
                 CMP     #$3A           ; ":"?
                 BEQ     SETSTOR        ; Yes, set STOR mode.
-                CMP     #$52           ; "R"?
-                BEQ     RUNPRG            ; Yes, run user program.
+                JSR     cmd_dispatch   ;* Handle R/L/S letter commands in BIOS.
+                                       ;* Returns (A,X preserved) if not a command.
                 STX     L              ; $00 -> L. * Woz is relying on X being zero
                 STX     H              ;    and H.
                 STY     YSAV           ; Save Y for comparison
@@ -129,13 +122,9 @@ NOTHEX:
                 BNE     NEXTITEM       ; Get next item (no carry).
                 INC     STH            ; Add carry to 'store index' high order.
 TONEXTITEM:     JMP     NEXTITEM       ; Get next command item.
-; Update to allow R to run programs with JSR 
-; this enables the program to return to monitor on RTS
-RUNPRG:
-                JSR     RUNSUB         ;* do a JSR to the JMP to Address we want to run.
-                JMP     WARMWOZ        ;* if the program does an RTS we warm start WozMON.
-RUNSUB:                                ; added a new label to allow for the JSR hack
-                JMP     (XAML)         ; Run at current XAM index.
+; R (run), L (Intel HEX load) and S (Intel HEX save) commands are now
+; handled by cmd_dispatch in the BIOS segment. This frees WozMon space and
+; lets those routines be reused from other code. See BIOS.s.
 NOTSTOR:
                 BMI     XAMNEXT        ; B7 = 0 for XAM, 1 for BLOCK XAM.
                 LDX     #$02           ; Byte count.
