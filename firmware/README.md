@@ -36,6 +36,18 @@ Intel HEX file (via `srec_cat`) alongside the binary. Paste that `.hex` into the
 terminal after the `L` command to load it. The load address comes from the
 `-offset` in `make_usr.sh` (default $0300).
 
+### Burning the ROM
+
+`burn.sh` flashes a ROM image to an Atmel AT28C256 (32K EEPROM) using
+[minipro](https://gitlab.com/DavidGriffith/minipro) with a TL866/T48/T56
+programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
+32768 bytes before writing; minipro erases and verifies automatically.
+
+```sh
+./make.sh BIOS.s   # build out/BIOS.bin
+./burn.sh          # burn it to the EEPROM
+```
+
 ## Status
 
 **Version 0.3.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
