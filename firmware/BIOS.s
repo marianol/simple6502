@@ -6,18 +6,45 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.3.0"   ; Define the version number
+.define VERSION "0.4.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
 ; -- ROM START --
 ;.org $8000 
 
-; ## Header ##
-; the top of the rom will have a JUMP Table for the common BIOS routines
-.segment "HEADER" 
-;BASIC:        jmp COLD_START
-MONITOR:      jmp WOZMON
+; ## BIOS Jump Table (public ABI) ##
+; Fixed-address entry points so external programs can call BIOS routines at
+; stable addresses that never change as the BIOS internals grow.
+;
+; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
+; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
+; slot - that would shift every entry below it and break existing binaries.
+; Add new routines to the end only.
+;
+; Slot  Address  Routine
+; ----  -------  ----------------------------------------------------------
+;  0    $8000    J_COLD_START  - cold start / reset entry
+;  1    $8003    J_MONITOR     - enter WozMon monitor
+;  2    $8006    J_SERIAL_OUT  - transmit A over serial
+;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
+;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
+;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
+;  6    $8012    J_OUT_CRLF    - transmit CR+LF
+;
+; The equates for these addresses live in bios_jumptable.inc for programs to
+; include. Keep that file in sync when appending entries here.
+.segment "HEADER"
+J_COLD_START: jmp reset          ; slot 0  $8000
+J_MONITOR:    jmp WOZMON         ; slot 1  $8003
+J_SERIAL_OUT: jmp serial_out     ; slot 2  $8006
+J_SERIAL_IN:  jmp serial_in      ; slot 3  $8009
+J_SERIAL_STR: jmp serial_out_str ; slot 4  $800C
+J_SERIAL_HEX: jmp serial_out_hex ; slot 5  $800F
+J_OUT_CRLF:   jmp out_crlf       ; slot 6  $8012
+
+; Keep MONITOR as an alias for existing code that referenced it.
+MONITOR = J_MONITOR
 
 ; ## BIOS Start ##
 .segment "BIOS"  

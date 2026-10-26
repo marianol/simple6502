@@ -14,6 +14,32 @@ This is a BIOS for the simple6502 SBC.
 
 Will come up with some other stuff with 32K I have space for stuff.
 
+## BIOS Jump Table (ABI)
+
+Like a C64 KERNAL, the BIOS exposes its routines through a fixed-address jump
+table at the start of ROM ($8000). Each entry is a 3-byte `JMP`, so external
+programs call stable addresses that do not change when the BIOS is rebuilt.
+
+The table is **append-only**: new routines are added at the end, existing slots
+never move. Include `bios_jumptable.inc` in your program and call the `BIOS_*`
+symbols instead of hardcoding addresses.
+
+| Addr  | Symbol            | Routine                                         |
+|-------|-------------------|-------------------------------------------------|
+| $8000 | `BIOS_COLD_START` | Cold start / reset                              |
+| $8003 | `BIOS_MONITOR`    | Enter WozMon                                     |
+| $8006 | `BIOS_SERIAL_OUT` | Transmit A over serial                          |
+| $8009 | `BIOS_SERIAL_IN`  | Receive a byte (carry set if data in A)         |
+| $800C | `BIOS_SERIAL_STR` | Transmit null-terminated string at `PTR_TX`     |
+| $800F | `BIOS_SERIAL_HEX` | Transmit A as two ASCII hex digits              |
+| $8012 | `BIOS_OUT_CRLF`   | Transmit CR + LF                                |
+
+```asm
+.include "bios_jumptable.inc"
+        lda #'A'
+        jsr BIOS_SERIAL_OUT
+```
+
 ## Monitor Commands
 
 WozMon's single-letter commands are decoded by `cmd_dispatch` in the BIOS, so
@@ -50,6 +76,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.3.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
+**Version 0.4.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

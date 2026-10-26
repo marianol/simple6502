@@ -35,18 +35,14 @@ Y_REG           = P_STATUS + 5
 SR_REG          = P_STATUS + 6
 
 
+; BIOS routines via the fixed-address jump table (stable across BIOS rebuilds).
+.include "bios_jumptable.inc"
+serial_out     = BIOS_SERIAL_OUT
+serial_out_str = BIOS_SERIAL_STR
+serial_out_hex = BIOS_SERIAL_HEX
+
 .segment "USR_PROGRAM" 
 ;.org $0300 ; Wozmon has the buffer @ $0200
-
-; Print Routines from the BIOS, need to add a JMP table
-serial_out:  
-  jmp $8056
-
-serial_out_str:
-  jmp $8074
-
- serial_out_hex:
-  jmp $8081
 
 ; # SPI bit banging implementation on VIA
 ; https://wilsonminesco.com/6502primer/potpourri.html#BITBANG_SPI

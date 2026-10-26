@@ -5,6 +5,23 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0]
+
+### Added
+
+- Fixed-address BIOS jump table at the start of ROM ($8000), exposing stable
+  entry points for external programs (cold start, monitor, and the serial
+  routines). The table is append-only so addresses never change across BIOS
+  rebuilds.
+- `bios_jumptable.inc` with public `BIOS_*` address equates for programs to
+  include instead of hardcoding BIOS addresses.
+- `burn.sh` to flash a ROM image to an AT28C256 EEPROM via minipro.
+
+### Changed
+
+- `userprg.s` now calls BIOS routines through the jump table include rather
+  than hardcoded (and stale) addresses.
+
 ## [0.3.0]
 
 ### Added

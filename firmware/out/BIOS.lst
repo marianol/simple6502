@@ -10,7 +10,7 @@ Current file: BIOS.s
 000000r 1               .setcpu "65C02"           ; Thats what we got
 000000r 1               .debuginfo +
 000000r 1               
-000000r 1               .define VERSION "0.3.0"   ; Define the version number
+000000r 1               .define VERSION "0.4.0"   ; Define the version number
 000000r 1               
 000000r 1               .include "defines_simple6502.s" ; Include HW Constants and Labels
 000000r 2               ; Herdware for the simple6502 SBC board
@@ -149,18 +149,45 @@ Current file: BIOS.s
 000000r 1               ; -- ROM START --
 000000r 1               ;.org $8000
 000000r 1               
-000000r 1               ; ## Header ##
-000000r 1               ; the top of the rom will have a JUMP Table for the common BIOS routines
+000000r 1               ; ## BIOS Jump Table (public ABI) ##
+000000r 1               ; Fixed-address entry points so external programs can call BIOS routines at
+000000r 1               ; stable addresses that never change as the BIOS internals grow.
+000000r 1               ;
+000000r 1               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
+000000r 1               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
+000000r 1               ; slot - that would shift every entry below it and break existing binaries.
+000000r 1               ; Add new routines to the end only.
+000000r 1               ;
+000000r 1               ; Slot  Address  Routine
+000000r 1               ; ----  -------  ----------------------------------------------------------
+000000r 1               ;  0    $8000    J_COLD_START  - cold start / reset entry
+000000r 1               ;  1    $8003    J_MONITOR     - enter WozMon monitor
+000000r 1               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
+000000r 1               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
+000000r 1               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
+000000r 1               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
+000000r 1               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
+000000r 1               ;
+000000r 1               ; The equates for these addresses live in bios_jumptable.inc for programs to
+000000r 1               ; include. Keep that file in sync when appending entries here.
 000000r 1               .segment "HEADER"
-000000r 1               ;BASIC:        jmp COLD_START
-000000r 1  4C rr rr     MONITOR:      jmp WOZMON
-000003r 1               
-000003r 1               ; ## BIOS Start ##
-000003r 1               .segment "BIOS"
+000000r 1  4C rr rr     J_COLD_START: jmp reset          ; slot 0  $8000
+000003r 1  4C rr rr     J_MONITOR:    jmp WOZMON         ; slot 1  $8003
+000006r 1  4C rr rr     J_SERIAL_OUT: jmp serial_out     ; slot 2  $8006
+000009r 1  4C rr rr     J_SERIAL_IN:  jmp serial_in      ; slot 3  $8009
+00000Cr 1  4C rr rr     J_SERIAL_STR: jmp serial_out_str ; slot 4  $800C
+00000Fr 1  4C rr rr     J_SERIAL_HEX: jmp serial_out_hex ; slot 5  $800F
+000012r 1  4C rr rr     J_OUT_CRLF:   jmp out_crlf       ; slot 6  $8012
+000015r 1               
+000015r 1               ; Keep MONITOR as an alias for existing code that referenced it.
+000015r 1               MONITOR = J_MONITOR
+000015r 1               
+000015r 1               ; ## BIOS Start ##
+000015r 1               .segment "BIOS"
 000000r 1  73 69 6D 70    .byte "simple6502 BIOS Ver: "
 000004r 1  6C 65 36 35  
 000008r 1  30 32 20 42  
-000015r 1  30 2E 33 2E    .byte VERSION
+000015r 1  30 2E 34 2E    .byte VERSION
 000019r 1  30           
 00001Ar 1               
 00001Ar 1               ; Reset Vector Start
@@ -567,7 +594,7 @@ Current file: BIOS.s
 0001F9r 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
 0001FDr 1  23 20 53 69  
 000201r 1  6D 70 6C 65  
-000212r 1  30 2E 33 2E    .byte VERSION
+000212r 1  30 2E 34 2E    .byte VERSION
 000216r 1  30           
 000217r 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
 00021Br 1  0D 0A 00       .byte $0D,$0A,$00
