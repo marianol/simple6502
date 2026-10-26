@@ -22,3 +22,11 @@ fp-info-cache
 #backups
 *-backups/
 .history/
+
+# macOS
+.DS_Store
+
+# Firmware build scratch
+# The committed out/*.bin etc. are kept on purpose (shipping ROM images);
+# these are regenerable scratch outputs we do not need in the repo.
+firmware/out/*.hex
