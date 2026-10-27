@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.4.0"   ; Define the version number
+.define VERSION "0.5.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
@@ -80,14 +80,84 @@ reset:
 ; post:
 ; Power on Self Test
 ; first thing will run on boot
+; post runs after the early ZP/stack test (done in the reset vector), so the
+; stack is already trusted here and we may use subroutines/registers freely.
 post: 
-  ; test RAM
-  nop
-  ; test ROM
-  nop
-  ; test ACIA
+  ; --- Walk RAM from $0200 up, store top of RAM in RAM_SIZE ---
+  ; Checkerboard-test each byte ($55 then $AA) and read it back. Stop at the
+  ; first byte that fails or when we reach the I/O space at $7F00 (we must
+  ; NOT write into $7F00+ which would hit real hardware registers). RAM_SIZE
+  ; holds the first non-RAM address, i.e. (top usable RAM address + 1).
+  ; This is destructive, which is fine at cold boot (RAM is undefined anyway).
+  lda #$00
+  sta POST_PTR          ; pointer low  = $00
+  lda #$02
+  sta POST_PTR+1        ; pointer high = $02  -> start at $0200
+@ram_walk:
+  ; stop once we reach I/O space ($7F00)
+  lda POST_PTR+1
+  cmp #$7F
+  beq @ram_done         ; high byte $7F and low byte $00 -> at $7F00
+  ldy #0
+  lda #$55              ; pattern 1
+  sta (POST_PTR),y
+  lda (POST_PTR),y
+  cmp #$55
+  bne @ram_done         ; readback failed -> end of RAM
+  lda #$AA              ; pattern 2
+  sta (POST_PTR),y
+  lda (POST_PTR),y
+  cmp #$AA
+  bne @ram_done         ; readback failed -> end of RAM
+  ; byte good, advance pointer
+  inc POST_PTR
+  bne @ram_walk
+  inc POST_PTR+1
+  bra @ram_walk
+@ram_done:
+  ; POST_PTR now points one past the last good RAM byte -> store as RAM_SIZE
+  lda POST_PTR
+  sta RAM_SIZE_L
+  lda POST_PTR+1
+  sta RAM_SIZE_H
+
+  ; --- VIA1 Timer 1 periodic tick (TOCKS jiffy clock) ---
+  ; STUB: left for when the VIA routines are implemented. This will configure
+  ; VIA1 Timer 1 for a ~10ms periodic IRQ and the IRQ handler will increment
+  ; the 3-byte TOCKS counter. The VIA is on the external I/O card (not onboard
+  ; in rev 1.6), so this stays a stub for now.
   nop
   rts
+
+; post_fail:
+; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
+; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
+; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
+; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
+; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
+; This never returns - a failed ZP/stack test is terminal.
+;
+; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
+; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
+; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
+; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
+; important for a fault beacon; this just lands it near 1 kHz on a probe.
+; Uses only the A and X registers - no ZP variables, no stack (it may be
+; entered before the stack is trusted).
+post_fail:
+  lda #$01
+  sta ZP_START          ; write 1 -> D0 high on the bus
+  ldx #$B6              ; 182 -> ~half period delay (~500 us)
+@fh:
+  dex
+  bne @fh
+  lda #$00
+  sta ZP_START          ; write 0 -> D0 low on the bus
+  ldx #$B6
+@fl:
+  dex
+  bne @fl
+  bra post_fail         ; loop forever (fault beacon)
 
 ; ### Serial Routines ###
 

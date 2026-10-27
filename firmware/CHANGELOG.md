@@ -5,6 +5,25 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0]
+
+### Added
+
+- Power-On Self Test (POST):
+  - Zero Page and Stack (Page 1) checkerboard test ($55/$AA), run in the reset
+    vector before the stack is used, so Page 1 can be tested without clobbering
+    a live return address.
+  - RAM walk from $0200 upward; the detected top of RAM (first non-RAM address)
+    is stored in the `RAM_SIZE` zero-page variable. The walk stops at the I/O
+    boundary ($7F00) so it never writes into hardware registers.
+  - `post_fail` fault beacon: on a ZP/stack failure (before serial is up and
+    with no onboard indicator in rev 1.6), it drives a ~1 kHz pattern on data
+    bit D0 by repeatedly writing to a Zero Page location, observable with a
+    scope or logic probe. Placeholder until a real indicator is designed.
+- Reserved `TOCKS` as a 3-byte jiffy counter ($E0-$E2) and `POST_PTR`
+  ($E9-$EA) in the zero-page map. The VIA Timer 1 tick that drives TOCKS is
+  left as a stub until the VIA routines are implemented.
+
 ## [0.4.0]
 
 ### Added

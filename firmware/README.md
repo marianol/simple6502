@@ -76,6 +76,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.4.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
+**Version 0.5.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

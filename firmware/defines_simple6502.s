@@ -83,11 +83,20 @@ VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 
 ; ### ZeroPage Variables ###
 ZP_START        = $00
+TOCKS           = $E0 ; Jiffy-like clock, 3 bytes ($E0-$E2), ~10ms per tick
+TOCKS_L         = $E0 ; low byte
+TOCKS_M         = $E1 ; mid byte
+TOCKS_H         = $E2 ; high byte
+RAM_SIZE        = $E3 ; RAM Size (top usable RAM address + 1), 2 bytes
+RAM_SIZE_L      = $E3 ; RAM Size LO Byte
+RAM_SIZE_H      = $E4 ; RAM Size HI Byte
 PTR_RD_RX_BUF   = $E5 ; RX Read Buffer Pointer
 PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
 PTR_TX          = $E7 ; Transmit String Pointer
 PTR_TX_L        = $E7 ; LO Byte
 PTR_TX_H        = $E8 ; HI Byte
+POST_PTR        = $E9 ; POST RAM-walk pointer (2 bytes, $E9-$EA)
+
 ; Intel HEX load/save (BIOS) scratch
 IHEX_ADDR       = $30 ; record load address (LO/HI)
 IHEX_ADDR_L     = $30
