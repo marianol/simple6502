@@ -5,6 +5,27 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0]
+
+### Added
+
+- VIA1 support (external I/O card at $7F20):
+  - `via_init` detects the VIA by writing/reading two patterns to DDRB, and if
+    present configures Timer 1 as a free-running ~10ms periodic interrupt and
+    enables it. Sets the `VIA_PRESENT` flag (and carry) when found.
+  - The IRQ handler now services VIA1 Timer 1: it checks the IFR, clears the
+    flag by reading T1C-L, and increments the 3-byte `TOCKS` jiffy counter.
+  - On boot, when the VIA is detected, a line is printed under the BIOS banner:
+    `## VIA1 on $7F20`.
+- VIA helper constants (ACR/IER/IFR masks, Timer 1 10ms reload) and a
+  `VIA_PRESENT` zero-page flag.
+
+### Notes
+
+- VIA Timer 1 interrupts are not yet delivered by the simple6502 emulator, so
+  the TOCKS tick can only be fully verified on real hardware for now. VIA
+  detection and the boot banner are verified in the emulator.
+
 ## [0.6.1]
 
 ### Fixed

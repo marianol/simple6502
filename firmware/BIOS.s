@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.6.1"   ; Define the version number
+.define VERSION "0.7.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
@@ -58,11 +58,10 @@ reset:
   sei               ; 78      disable interrupts 
   cld               ; D8      turn decimal mode off
 
-  ; --- Early memory POST: Zero Page and Stack (Page 1) ---
-  ; These run BEFORE the stack is used (no JSR yet) so we can test Page 1
-  ; without clobbering a live return address. We use ONLY the A and X
-  ; registers and immediate values - no ZP variables, no stack. A mismatch
-  ; jumps to post_fail (which signals on the data bus since serial is down).
+  ; --- Memory Check: Zero Page and Stack (Page 1) ---
+  ; These run BEFORE the stack is used so we can test Page 1
+  ; Using ONLY the A and X and immediate values - no ZP variables, no stack. 
+  ; A mismatch jumps to post_fail.
 
   ; Test Zero Page ($0000-$00FF): checkerboard $55 then $AA
   ldx #0
@@ -103,18 +102,22 @@ reset:
   txs               ; 9A      set the stack start
   jsr post          ; do the rest of POST (RAM walk)
   jsr init_serial   ; init ACIA # IO_8
-  ; Print startup message
+  jsr via_init      ; detect + init VIA1 (sets carry if present)
+  ; Print startup message (BIOS banner)
   lda #<startupMessage 
   sta PTR_TX
   lda #>startupMessage
   sta PTR_TX_H
   jsr serial_out_str
+  ; If VIA1 was detected, announce it under the banner: "## VIA1 on $7F20"
+  jsr via_report
  ; Print woz message
   lda #<wozmonMessage
   sta PTR_TX
   lda #>wozmonMessage
   sta PTR_TX_H
   jsr serial_out_str
+  cli               ; enable IRQs now that handlers/VIA are set up
   jmp WOZMON        ; go to the monitor
 
 
@@ -155,8 +158,7 @@ post_fail:
 
 ; post:
 ; Power on Self Test
-; first thing will run on boot
-; post runs after the early ZP/stack test (done in the reset vector), so the
+; post runs after the early ZP/stack test, so the
 ; stack is already trusted here and we may use subroutines/registers freely.
 post: 
   ; --- Walk RAM from $0200 up, store top of RAM in RAM_SIZE ---
@@ -206,8 +208,6 @@ post:
   rts
 
 ; ### Serial Routines ###
-
-; init_serial:
 ; Initializes the on board serial interface 
 ; Reset and set config for the ACIA. Init the RX buffer pointer
 init_serial:
@@ -219,6 +219,80 @@ init_serial:
   lda #0
   sta PTR_RD_RX_BUF
   sta PTR_WR_RX_BUF
+  rts
+
+; ### VIA Routines ###
+
+; via_init:
+; Detect VIA1 (on the external I/O card, $7F20) and, if present, set up
+; Timer 1 as a free-running ~10ms periodic interrupt that drives the TOCKS
+; jiffy clock (incremented in the IRQ handler).
+;
+; Detection: DDRB is a plain read/write register with no external side effect
+; on the value stored, so we write two patterns ($55, $AA) and read them back.
+; An absent card reads back open-bus / mirror values and will fail one of the
+; two checks. (Writing DDRB only sets pin directions, harmless for detection.)
+;
+; Sets VIA_PRESENT (and returns carry set) if the VIA responded; clears both
+; otherwise. Leaves IRQs enabled on the VIA only when present.
+; Clobbers A, X.
+via_init:
+  stz VIA_PRESENT       ; assume absent until proven
+  ; --- presence check on DDRB ---
+  lda #$55
+  sta VIA1_DDRB
+  cmp VIA1_DDRB
+  bne @absent
+  lda #$AA
+  sta VIA1_DDRB
+  cmp VIA1_DDRB
+  bne @absent
+  ; --- VIA present: configure Timer 1 free-run tick ---
+  lda #$00
+  sta VIA1_DDRB         ; leave Port B as inputs (benign default)
+  sta VIA1_DDRA         ; leave Port A as inputs too
+  ; clear the 3-byte TOCKS jiffy counter
+  stz TOCKS_L
+  stz TOCKS_M
+  stz TOCKS_H
+  ; disable all VIA interrupt sources first
+  lda #VIA_IER_CLR_ALL
+  sta VIA1_IER
+  ; ACR: Timer 1 continuous (free-run), PB7 output off
+  lda #VIA_ACR_T1_FREERUN
+  sta VIA1_ACR
+  ; load Timer 1 latch/counter for the ~10ms period
+  lda #<VIA_T1_10MS
+  sta VIA1_T1CL         ; writing T1C-L loads the low latch
+  lda #>VIA_T1_10MS
+  sta VIA1_T1CH         ; writing T1C-H loads high latch + starts T1
+  ; enable the Timer 1 interrupt
+  lda #VIA_IER_T1_ENABLE
+  sta VIA1_IER
+  ; mark present
+  lda #$01
+  sta VIA_PRESENT
+  sec                   ; carry set = present
+  rts
+@absent:
+  stz VIA1_DDRB         ; restore a benign DDRB (inputs)
+  stz VIA_PRESENT
+  clc                   ; carry clear = absent
+  rts
+
+; via_report:
+; If VIA1 was detected, print a line under the BIOS banner:
+;   ## VIA1 on $7F20
+; Does nothing if the VIA is absent. Clobbers A, Y.
+via_report:
+  lda VIA_PRESENT
+  beq @done
+  lda #<viaMessage
+  sta PTR_TX
+  lda #>viaMessage
+  sta PTR_TX_H
+  jsr serial_out_str
+@done:
   rts
 
 ; serial_out:
@@ -591,6 +665,9 @@ startupMessage:
 wozmonMessage:
   .byte	CR,LF,"> WozMon <"
   .byte CR,LF,$00
+viaMessage:
+  .byte "## VIA1 on $7F20"
+  .byte CR,LF,$00
 ; Intel HEX loader/saver messages
 loadMsg:
   .byte CR,LF,"Paste Intel HEX..",CR,LF,$00
@@ -603,14 +680,28 @@ eofRec:
 
 ; ### Interrupt Handlers ###
 
-; # IRQ Handler 
+; # IRQ Handler
+; Services VIA1 Timer 1 (the ~10ms tick) by incrementing the 3-byte TOCKS
+; jiffy counter. Only A is used, so only A is preserved. Other sources (ACIA
+; RX, etc.) can be added here later; unrecognised IRQs simply return.
 irq_handler:
-    nop       ; EA
-    ; BIT  VIA1_STATUS   ; Check 6522 VIA1's status register without loading.
-    ; BMI  SERVICE_VIA1  ; If it caused the interrupt, branch to service it.
-    ; BIT  VIA2_STATUS   ; Otherwise, check VIA2's status register.
-    ; BMI  SERVICE_VIA2  ; If that one did the interrupt, branch to service it.
-    ; JMP  SERVICE_ACIA  ; If both VIAs say "not me," it had to be the 6551 ACIA.
+    pha                   ; preserve A (X,Y untouched below)
+    ; Was it VIA1 Timer 1? Check IFR bit 6. (If the VIA is absent this reads
+    ; open bus, but then it is not an IRQ source so the board won't assert IRQ.)
+    lda VIA1_IFR
+    and #VIA_IFR_T1
+    beq @not_t1           ; not Timer 1 -> nothing we handle
+    ; Clear the Timer 1 interrupt flag by reading T1C-L.
+    lda VIA1_T1CL
+    ; Increment the 24-bit TOCKS counter (little-endian).
+    inc TOCKS_L
+    bne @done
+    inc TOCKS_M
+    bne @done
+    inc TOCKS_H
+@done:
+@not_t1:
+    pla                   ; restore A
     rti       ; 40 
 
 ; # NMI Handler Vector 

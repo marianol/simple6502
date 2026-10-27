@@ -80,6 +80,22 @@ VIA1_PCR    = VIA1_BASE + 12    ; PCR Peripheral Control Register
 VIA1_IFR    = VIA1_BASE + 13    ; $7F2D IFR > Interrupt Flag Register
 VIA1_IER    = VIA1_BASE + 14    ; $7F2E ; Interrupt Enable Register
 
+; VIA helper constants
+; ACR (Auxiliary Control Register): bit7=T1 PB7 output, bit6=T1 continuous.
+; $40 = Timer 1 free-run (continuous interrupts), PB7 disabled, shift reg off.
+VIA_ACR_T1_FREERUN = %01000000
+; IER (Interrupt Enable Register): bit7=set/clear flag, bit6=Timer 1.
+; Writing $C0 sets (enables) the Timer 1 interrupt; $7F clears all enables.
+VIA_IER_T1_ENABLE  = %11000000
+VIA_IER_CLR_ALL    = %01111111
+; IFR (Interrupt Flag Register): bit6 = Timer 1.
+VIA_IFR_T1         = %01000000
+
+; Timer 1 reload value for a ~10ms periodic tick at 1.8432 MHz.
+; 10ms = 18432 cycles. In free-run the effective period is (N+2) cycles,
+; so load N = 18432 - 2 = 18430 = $47FE.
+VIA_T1_10MS        = 18430
+
 
 ; ### ZeroPage Variables ###
 ZP_START        = $00
@@ -96,6 +112,7 @@ PTR_TX          = $E7 ; Transmit String Pointer
 PTR_TX_L        = $E7 ; LO Byte
 PTR_TX_H        = $E8 ; HI Byte
 POST_PTR        = $E9 ; POST RAM-walk pointer (2 bytes, $E9-$EA)
+VIA_PRESENT     = $EB ; non-zero if VIA1 was detected and initialized
 
 ; Intel HEX load/save (BIOS) scratch
 IHEX_ADDR       = $30 ; record load address (LO/HI)
