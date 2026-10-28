@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.6.0"   ; Define the version number
+.define VERSION "0.6.1"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
@@ -57,9 +57,51 @@ MONITOR = J_MONITOR
 reset:
   sei               ; 78      disable interrupts 
   cld               ; D8      turn decimal mode off
+
+  ; --- Early memory POST: Zero Page and Stack (Page 1) ---
+  ; These run BEFORE the stack is used (no JSR yet) so we can test Page 1
+  ; without clobbering a live return address. We use ONLY the A and X
+  ; registers and immediate values - no ZP variables, no stack. A mismatch
+  ; jumps to post_fail (which signals on the data bus since serial is down).
+
+  ; Test Zero Page ($0000-$00FF): checkerboard $55 then $AA
+  ldx #0
+@zp_55:
+  lda #$55
+  sta $00,x
+  cmp $00,x
+  bne post_fail
+  inx
+  bne @zp_55
+@zp_aa:
+  lda #$AA
+  sta $00,x         ; x wrapped back to 0
+  cmp $00,x
+  bne post_fail
+  inx
+  bne @zp_aa
+
+  ; Test Stack page / Page 1 ($0100-$01FF): safe to clobber, nothing pushed yet
+  ldx #0
+@sp_55:
+  lda #$55
+  sta $0100,x
+  cmp $0100,x
+  bne post_fail
+  inx
+  bne @sp_55
+@sp_aa:
+  lda #$AA
+  sta $0100,x       ; x wrapped back to 0
+  cmp $0100,x
+  bne post_fail
+  inx
+  bne @sp_aa
+
+  ; ZP and stack are good - establish the stack pointer and carry on.
   ldx #$FF          ; A2 FF
   txs               ; 9A      set the stack start
-  jsr post          ; do a POST
+  jsr post          ; do the rest of POST (RAM walk)
   jsr init_serial   ; init ACIA # IO_8
   ; Print startup message
   lda #<startupMessage 
@@ -78,6 +120,38 @@ reset:
 
 
 ; ### Subrutines ### 
+
+; post_fail:
+; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
+; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
+; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
+; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
+; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
+; This never returns - a failed ZP/stack test is terminal.
+; Placed right before the POST tests so the reset-vector ZP/stack checks can
+; reach it with a direct conditional branch (no trampoline needed).
+;
+; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
+; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
+; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
+; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
+; important for a fault beacon; this just lands it near 1 kHz on a probe.
+; Uses only the A and X registers - no ZP variables, no stack (it may be
+; entered before the stack is trusted).
+post_fail:
+  lda #$01
+  sta ZP_START          ; write 1 -> D0 high on the bus
+  ldx #$B6              ; 182 -> ~half period delay (~500 us)
+@fh:
+  dex
+  bne @fh
+  lda #$00
+  sta ZP_START          ; write 0 -> D0 low on the bus
+  ldx #$B6
+@fl:
+  dex
+  bne @fl
+  bra post_fail         ; loop forever (fault beacon)
 
 ; post:
 ; Power on Self Test
@@ -130,36 +204,6 @@ post:
   ; in rev 1.6), so this stays a stub for now.
   nop
   rts
-
-; post_fail:
-; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
-; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
-; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
-; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
-; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
-; This never returns - a failed ZP/stack test is terminal.
-;
-; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
-; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
-; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
-; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
-; important for a fault beacon; this just lands it near 1 kHz on a probe.
-; Uses only the A and X registers - no ZP variables, no stack (it may be
-; entered before the stack is trusted).
-post_fail:
-  lda #$01
-  sta ZP_START          ; write 1 -> D0 high on the bus
-  ldx #$B6              ; 182 -> ~half period delay (~500 us)
-@fh:
-  dex
-  bne @fh
-  lda #$00
-  sta ZP_START          ; write 0 -> D0 low on the bus
-  ldx #$B6
-@fl:
-  dex
-  bne @fl
-  bra post_fail         ; loop forever (fault beacon)
 
 ; ### Serial Routines ###
 

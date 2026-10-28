@@ -5,6 +5,18 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1]
+
+### Fixed
+
+- The Zero Page and Stack (Page 1) checkerboard POST test is now actually run
+  in the reset vector. It was described in the 0.5.0 comments and changelog but
+  never wired in, which left `post_fail` unreachable. A mismatch now jumps to
+  the `post_fail` data-bus fault beacon as intended. `post_fail` was moved to
+  just before `post` so the four checks reach it with direct branches.
+- Verified in the emulator: normal boot is unchanged, and a deliberately
+  broken stack compare hangs in `post_fail` before the stack pointer is set up.
+
 ## [0.6.0]
 
 ### Added
