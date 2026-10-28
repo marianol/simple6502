@@ -33,6 +33,7 @@ symbols instead of hardcoding addresses.
 | $800C | `BIOS_SERIAL_STR` | Transmit null-terminated string at `PTR_TX`     |
 | $800F | `BIOS_SERIAL_HEX` | Transmit A as two ASCII hex digits              |
 | $8012 | `BIOS_OUT_CRLF`   | Transmit CR + LF                                |
+| $8015 | `BIOS_SERIAL_POLL` | Receive a byte, no echo (carry set if data in A) |
 
 ```asm
 .include "bios_jumptable.inc"
@@ -76,6 +77,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.5.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
+**Version 0.6.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

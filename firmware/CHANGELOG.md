@@ -5,6 +5,21 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0]
+
+### Added
+
+- `serial_poll`: non-blocking, non-echoing serial read. Returns the byte in A
+  with carry set if one was waiting, or carry clear if not. Preserves X and Y.
+  Exposed as jump table slot 7 (`BIOS_SERIAL_POLL`, $8015) for programs that
+  poll the keyboard and do their own echoing (BASIC GET / Ctrl-C check, games,
+  editors).
+
+### Changed
+
+- `serial_in` now calls `serial_poll` and then echoes. Behavior is unchanged
+  (slot 3, `BIOS_SERIAL_IN`).
+
 ## [0.5.0]
 
 ### Added

@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.5.0"   ; Define the version number
+.define VERSION "0.6.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 
@@ -31,6 +31,7 @@
 ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
 ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
 ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
+;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
 ;
 ; The equates for these addresses live in bios_jumptable.inc for programs to
 ; include. Keep that file in sync when appending entries here.
@@ -42,6 +43,7 @@ J_SERIAL_IN:  jmp serial_in      ; slot 3  $8009
 J_SERIAL_STR: jmp serial_out_str ; slot 4  $800C
 J_SERIAL_HEX: jmp serial_out_hex ; slot 5  $800F
 J_OUT_CRLF:   jmp out_crlf       ; slot 6  $8012
+J_SERIAL_POLL: jmp serial_poll   ; slot 7  $8015
 
 ; Keep MONITOR as an alias for existing code that referenced it.
 MONITOR = J_MONITOR
@@ -190,20 +192,36 @@ serial_out:
   sta ACIA_DATA       ; output char in A to TDRE
   rts
 
-; serial_in: 
-; Takes the byte recived by that ACIA and returns it in A (acumulator)  
-; if a byte was received sets the Carry Flag, if not it clears it
-;
-serial_in:
+; serial_poll:
+; Non-blocking, NON-echoing read of the ACIA. Checks whether a byte is
+; waiting and returns immediately either way.
+; - Byte waiting: byte in A, Carry set
+; - Nothing waiting: Carry clear (A is undefined)
+; - X, Y preserved
+; Intended for programs that poll the keyboard (BASIC GET / Ctrl-C check,
+; games, editors) and do their own echoing.
+serial_poll:
   lda ACIA_STATUS
   and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
   beq @no_data      ; nothing in the RX Buffer
   lda ACIA_DATA     ; load the byte to A
-  jsr serial_out    ; echo back
   sec               ; we have data set Carry
-  rts 
+  rts
 @no_data:
   clc               ; no data RX clear carry
+  rts
+
+; serial_in: 
+; Takes the byte recived by that ACIA and returns it in A (acumulator)  
+; if a byte was received sets the Carry Flag, if not it clears it
+; Same as serial_poll, but echoes the received byte back to the terminal.
+;
+serial_in:
+  jsr serial_poll   ; non-blocking read, no echo
+  bcc @no_data      ; nothing received, carry already clear
+  jsr serial_out    ; echo back (returns the byte in A)
+  sec               ; we have data set Carry
+@no_data:
   rts
 
 ; serial_in_raw:
