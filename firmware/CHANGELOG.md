@@ -5,10 +5,18 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0]
 
 ### Added
 
+- Jump table slots 8 to 11: `BIOS_BASIC_COLD` ($8018) and `BIOS_BASIC_WARM` ($801B) jump
+  to BASIC's cold and warm start (`BASIC_COLD_START` $DC00 and `BASIC_WARM_START` $DC03 in
+  `bios_jumptable.inc`). `BIOS_LOAD` ($801E) and `BIOS_SAVE` ($8021) call the new
+  `bios_load` and `bios_save` routines, which are stubs (just `RTS`) for now. Slots 0 to 7 did
+  not move.
+- The jump table is checked at link time against `bios_jumptable.inc`, so a slot that is
+  added to one and not the other fails the build. BASIC's `header.s` has the same check for
+  its two entry points.
 - MS BASIC source in `basic/`, imported from the `clean_simple6502` branch of
   [marianol/msbasic](https://github.com/marianol/msbasic) (commit `e2b02db`). It uses the
   BIOS through the jump table (`BIOS_SERIAL_OUT`, `BIOS_SERIAL_POLL`) and reads the top of
@@ -26,6 +34,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 
+- The jump table moved from `BIOS.s` to its own file, `bios_header.s`, included by `BIOS.s`.
+- BASIC's `LOAD` and `SAVE` statements now jump to `BIOS_LOAD` and `BIOS_SAVE` instead of
+  having their own empty stubs. The BASIC binary grew 5 bytes and its reference binary was
+  rebuilt (the only differences were the new glue and the `LOAD` entry in its statement table).
 - The user program tools moved to their own folder, `userprog/`, so they build
   independently of the ROM: `userprg.s`, `make_usr.sh`, `simple6502_RAM-Only.cfg` and
   `SPI_prg.txt`. `make_usr.sh` runs from any directory, writes to `userprog/out/` (ignored
@@ -35,7 +47,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   `ROM` region ends at $DBFF. All segments are optional, so the same file links the BIOS
   alone, BASIC alone or both.
 - `defines_simple6502.s` only has hardware definitions now, the zero page variables moved
-  to `zeropage.s`. The BIOS binary is byte-identical to 0.7.0 (checked).
+  to `zeropage.s`. The BIOS code was byte-identical to 0.7.0 after this change (checked).
 - `bios_jumptable.inc` is the only copy; BASIC uses it from here.
 
 ## [0.7.0]

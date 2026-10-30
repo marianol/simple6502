@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 ### Changed
+- `LOAD` and `SAVE` (`loadsave.s`) jump to the BIOS (`BIOS_LOAD` and `BIOS_SAVE`, BIOS v0.8.0),
+  which are stubs for now, instead of having their own `rts`. The binary grew 5 bytes and
+  `ref/simple6502_ref.bin` was rebuilt: the only differences were the two `jmp`s and the
+  `LOAD` entry in the statement table.
+- `header.s` checks at link time that the cold and warm start entries are at
+  `BASIC_COLD_START` and `BASIC_WARM_START` (`bios_jumptable.inc`), where the BIOS jumps.
 - Moved into the simple6502 repository (`firmware/basic/`). `defines_simple6502.s` and
   `zeropage.s` were renamed `defines_basic.s` and `zeropage_basic.s` (the BIOS has files with
   the old names). `simple6502.cfg` and `bios_jumptable.inc` are now the BIOS copies in

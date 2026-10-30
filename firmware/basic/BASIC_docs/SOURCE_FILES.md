@@ -55,7 +55,7 @@ Descriptions are inferred from a quick scan of each file.
 | inline.s | Line input (`INLIN`) from the console. |
 | iscntc.s | Ctrl-C check using `BIOS_SERIAL_POLL`. Any other key is discarded. Falls into `STOP`. |
 | extra.s | `MONRDKEY` (blocking, echoes, handles backspace) and `MONRDKEY2` (non-blocking, for GET), in the `EXTRA` segment. |
-| loadsave.s | LOAD and SAVE stubs (just `rts`). The BIOS has no load/save routine yet. |
+| loadsave.s | The `LOAD` and `SAVE` statements. Each one jumps to the BIOS (`BIOS_LOAD`, `BIOS_SAVE`), which are stubs for now. |
 
 ## Build files (not read by the assembler)
 

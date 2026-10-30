@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.7.0"   ; Define the version number
+.define VERSION "0.8.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
@@ -15,39 +15,11 @@
 ;.org $8000 
 
 ; ## BIOS Jump Table (public ABI) ##
-; Fixed-address entry points so external programs can call BIOS routines at
-; stable addresses that never change as the BIOS internals grow.
-;
-; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
-; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
-; slot - that would shift every entry below it and break existing binaries.
-; Add new routines to the end only.
-;
-; Slot  Address  Routine
-; ----  -------  ----------------------------------------------------------
-;  0    $8000    J_COLD_START  - cold start / reset entry
-;  1    $8003    J_MONITOR     - enter WozMon monitor
-;  2    $8006    J_SERIAL_OUT  - transmit A over serial
-;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
-;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
-;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
-;  6    $8012    J_OUT_CRLF    - transmit CR+LF
-;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
-;
-; The equates for these addresses live in bios_jumptable.inc for programs to
-; include. Keep that file in sync when appending entries here.
-.segment "HEADER"
-J_COLD_START: jmp reset          ; slot 0  $8000
-J_MONITOR:    jmp WOZMON         ; slot 1  $8003
-J_SERIAL_OUT: jmp serial_out     ; slot 2  $8006
-J_SERIAL_IN:  jmp serial_in      ; slot 3  $8009
-J_SERIAL_STR: jmp serial_out_str ; slot 4  $800C
-J_SERIAL_HEX: jmp serial_out_hex ; slot 5  $800F
-J_OUT_CRLF:   jmp out_crlf       ; slot 6  $8012
-J_SERIAL_POLL: jmp serial_poll   ; slot 7  $8015
-
-; Keep MONITOR as an alias for existing code that referenced it.
-MONITOR = J_MONITOR
+; The fixed-address jump table at the start of ROM is in bios_header.s (the HEADER
+; segment). Its entries are APPEND-ONLY, read the contract at the top of that file.
+; bios_jumptable.inc has the public equates and is checked against the table.
+.include "bios_jumptable.inc"
+.include "bios_header.s"
 
 ; ## BIOS Start ##
 .segment "BIOS"  
@@ -654,6 +626,19 @@ put_hex_byte:
   sta IHEX_SUM
   pla
   jsr serial_out_hex    ; reuse BIOS hex printer
+  rts
+
+; ### LOAD / SAVE for BASIC (stubs) ###
+
+; bios_load, bios_save:
+; The BASIC LOAD and SAVE statements call these through the jump table
+; (BIOS_LOAD, BIOS_SAVE). They are STUBS for now: they return without doing
+; anything. They are meant for the SD card routines. What they take (file name
+; and so on) is not defined yet, it will be documented here when they are written.
+; They are not the monitor's L and S commands (load_ihex and save_ihex).
+bios_load:
+  rts
+bios_save:
   rts
 
 ; ROM Data

@@ -11,7 +11,7 @@ This fork adds a target for [Simple6502](https://github.com/marianol/simple6502)
 
 Build BASIC on its own with `./make_simple6502.sh`. The output is `out/Simple6502-BASIC.bin` (plus the `.o` and the `.lbl` label file) in this folder, with the BIOS area empty. `./compare_simple6502.sh` builds it and compares it with `ref/simple6502_ref.bin`. To build the complete ROM, BIOS and BASIC together, use `../make_rom.sh`.
 
-* `defines_basic.s`: target configuration. It includes `../bios_jumptable.inc`, the BIOS jump table (BIOS v0.6.1 or later, needs `BIOS_SERIAL_POLL`).
+* `defines_basic.s`: target configuration. It includes `../bios_jumptable.inc`, the BIOS jump table (BIOS v0.8.0 or later, needs `BIOS_SERIAL_POLL`, `BIOS_LOAD` and `BIOS_SAVE`).
 * `zeropage_basic.s`: the BASIC zero page variables, in the range the system zero page map (`../zeropage.s`) reserves for BASIC. BASIC reads the top of memory from `MEMSIZ` ($E3/$E4), a name for the BIOS `RAM_SIZE` that the BIOS POST sets at startup. The map of the whole zero page is in `../docs/ZEROPAGE_MAP.md`.
 * `extra.s`: `MONRDKEY` (blocking, echoes, handles backspace) and `MONRDKEY2` (non-blocking, used by GET).
 * `iscntc.s`: Ctrl-C check.

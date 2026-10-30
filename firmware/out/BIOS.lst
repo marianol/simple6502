@@ -10,7 +10,7 @@ Current file: BIOS.s
 000000r 1               .setcpu "65C02"           ; Thats what we got
 000000r 1               .debuginfo +
 000000r 1               
-000000r 1               .define VERSION "0.7.0"   ; Define the version number
+000000r 1               .define VERSION "0.8.0"   ; Define the version number
 000000r 1               
 000000r 1               .include "defines_simple6502.s" ; Include HW Constants and Labels
 000000r 2               ; Herdware for the simple6502 SBC board
@@ -272,46 +272,120 @@ Current file: BIOS.s
 0000EC  1               ;.org $8000
 0000EC  1               
 0000EC  1               ; ## BIOS Jump Table (public ABI) ##
-0000EC  1               ; Fixed-address entry points so external programs can call BIOS routines at
-0000EC  1               ; stable addresses that never change as the BIOS internals grow.
-0000EC  1               ;
-0000EC  1               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
-0000EC  1               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
-0000EC  1               ; slot - that would shift every entry below it and break existing binaries.
-0000EC  1               ; Add new routines to the end only.
-0000EC  1               ;
-0000EC  1               ; Slot  Address  Routine
-0000EC  1               ; ----  -------  ----------------------------------------------------------
-0000EC  1               ;  0    $8000    J_COLD_START  - cold start / reset entry
-0000EC  1               ;  1    $8003    J_MONITOR     - enter WozMon monitor
-0000EC  1               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
-0000EC  1               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
-0000EC  1               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
-0000EC  1               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
-0000EC  1               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
-0000EC  1               ;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
-0000EC  1               ;
-0000EC  1               ; The equates for these addresses live in bios_jumptable.inc for programs to
-0000EC  1               ; include. Keep that file in sync when appending entries here.
-0000EC  1               .segment "HEADER"
-000000r 1  4C rr rr     J_COLD_START: jmp reset          ; slot 0  $8000
-000003r 1  4C rr rr     J_MONITOR:    jmp WOZMON         ; slot 1  $8003
-000006r 1  4C rr rr     J_SERIAL_OUT: jmp serial_out     ; slot 2  $8006
-000009r 1  4C rr rr     J_SERIAL_IN:  jmp serial_in      ; slot 3  $8009
-00000Cr 1  4C rr rr     J_SERIAL_STR: jmp serial_out_str ; slot 4  $800C
-00000Fr 1  4C rr rr     J_SERIAL_HEX: jmp serial_out_hex ; slot 5  $800F
-000012r 1  4C rr rr     J_OUT_CRLF:   jmp out_crlf       ; slot 6  $8012
-000015r 1  4C rr rr     J_SERIAL_POLL: jmp serial_poll   ; slot 7  $8015
-000018r 1               
-000018r 1               ; Keep MONITOR as an alias for existing code that referenced it.
-000018r 1               MONITOR = J_MONITOR
-000018r 1               
-000018r 1               ; ## BIOS Start ##
-000018r 1               .segment "BIOS"
+0000EC  1               ; The fixed-address jump table at the start of ROM is in bios_header.s (the HEADER
+0000EC  1               ; segment). Its entries are APPEND-ONLY, read the contract at the top of that file.
+0000EC  1               ; bios_jumptable.inc has the public equates and is checked against the table.
+0000EC  1               .include "bios_jumptable.inc"
+0000EC  2               ; simple6502 BIOS - Public Jump Table (ABI)
+0000EC  2               ;
+0000EC  2               ; Fixed entry-point addresses for the BIOS routines. External programs that run
+0000EC  2               ; on the simple6502 (user programs, loaders, future BASIC, etc.) should call
+0000EC  2               ; these addresses rather than the BIOS's internal labels, which move whenever
+0000EC  2               ; the BIOS is rebuilt.
+0000EC  2               ;
+0000EC  2               ; The table lives at the start of ROM ($8000); each entry is a 3-byte JMP.
+0000EC  2               ;
+0000EC  2               ; CONTRACT: the table is APPEND-ONLY. Addresses here are frozen. New routines
+0000EC  2               ; are added at the end (next free slot). Never insert or reorder.
+0000EC  2               ;
+0000EC  2               ; Usage from an assembly program:
+0000EC  2               ;     .include "bios_jumptable.inc"
+0000EC  2               ;     lda #'A'
+0000EC  2               ;     jsr BIOS_SERIAL_OUT
+0000EC  2               
+0000EC  2               BIOS_JUMPTABLE = $8000              ; base address of the table
+0000EC  2               
+0000EC  2               BIOS_COLD_START = BIOS_JUMPTABLE + 0*3   ; $8000 cold start / reset
+0000EC  2               BIOS_MONITOR    = BIOS_JUMPTABLE + 1*3   ; $8003 enter WozMon
+0000EC  2               BIOS_SERIAL_OUT = BIOS_JUMPTABLE + 2*3   ; $8006 transmit A over serial
+0000EC  2               BIOS_SERIAL_IN  = BIOS_JUMPTABLE + 3*3   ; $8009 receive byte (carry set if data in A)
+0000EC  2               BIOS_SERIAL_STR = BIOS_JUMPTABLE + 4*3   ; $800C transmit null-terminated string @ PTR_TX
+0000EC  2               BIOS_SERIAL_HEX = BIOS_JUMPTABLE + 5*3   ; $800F transmit A as two ASCII hex digits
+0000EC  2               BIOS_OUT_CRLF   = BIOS_JUMPTABLE + 6*3   ; $8012 transmit CR + LF
+0000EC  2               BIOS_SERIAL_POLL = BIOS_JUMPTABLE + 7*3  ; $8015 receive byte, no echo (carry set if data in A)
+0000EC  2               BIOS_BASIC_COLD = BIOS_JUMPTABLE + 8*3   ; $8018 cold start MS BASIC (new program, memory cleared)
+0000EC  2               BIOS_BASIC_WARM = BIOS_JUMPTABLE + 9*3   ; $801B warm start MS BASIC (keeps the program and variables)
+0000EC  2               BIOS_LOAD       = BIOS_JUMPTABLE + 10*3  ; $801E BASIC LOAD (stub for now, just RTS)
+0000EC  2               BIOS_SAVE       = BIOS_JUMPTABLE + 11*3  ; $8021 BASIC SAVE (stub for now, just RTS)
+0000EC  2               
+0000EC  2               ; MS BASIC's own entry points, the two JMPs at the start of its ROM region
+0000EC  2               ; (basic/header.s, BASROM at $DC00 in simple6502.cfg). The jump table slots above
+0000EC  2               ; go there. basic/header.s checks at link time that BASIC really starts at these.
+0000EC  2               BASIC_COLD_START = $DC00            ; cold start
+0000EC  2               BASIC_WARM_START = $DC03            ; warm start (RESTART)
+0000EC  2               
+0000EC  1               .include "bios_header.s"
+0000EC  2               ; simple6502 BIOS header: the jump table (public ABI)
+0000EC  2               ;
+0000EC  2               ; Fixed-address entry points so external programs can call BIOS routines at
+0000EC  2               ; stable addresses that never change as the BIOS internals grow.
+0000EC  2               ;
+0000EC  2               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
+0000EC  2               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
+0000EC  2               ; slot - that would shift every entry below it and break existing binaries.
+0000EC  2               ; Add new routines to the end only.
+0000EC  2               ;
+0000EC  2               ; Slot  Address  Routine
+0000EC  2               ; ----  -------  ----------------------------------------------------------
+0000EC  2               ;  0    $8000    J_COLD_START  - cold start / reset entry
+0000EC  2               ;  1    $8003    J_MONITOR     - enter WozMon monitor
+0000EC  2               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
+0000EC  2               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
+0000EC  2               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
+0000EC  2               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
+0000EC  2               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
+0000EC  2               ;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
+0000EC  2               ;  8    $8018    J_BASIC_COLD  - cold start MS BASIC (new program, memory cleared)
+0000EC  2               ;  9    $801B    J_BASIC_WARM  - warm start MS BASIC (keeps the program and variables)
+0000EC  2               ; 10    $801E    J_LOAD        - BASIC LOAD (stub for now, just RTS)
+0000EC  2               ; 11    $8021    J_SAVE        - BASIC SAVE (stub for now, just RTS)
+0000EC  2               ;
+0000EC  2               ; The equates for these addresses live in bios_jumptable.inc for programs to
+0000EC  2               ; include. The .asserts at the end of this file stop the build if the two get
+0000EC  2               ; out of sync, so when you append an entry here also add its equate there.
+0000EC  2               ;
+0000EC  2               ; Included by BIOS.s. The routines the entries jump to are in BIOS.s and
+0000EC  2               ; wozmon_sbc.s. BIOS.s includes bios_jumptable.inc before this file.
+0000EC  2               
+0000EC  2               .segment "HEADER"
+000000r 2  4C rr rr     J_COLD_START:  jmp reset            ; slot 0  $8000
+000003r 2  4C rr rr     J_MONITOR:     jmp WOZMON           ; slot 1  $8003
+000006r 2  4C rr rr     J_SERIAL_OUT:  jmp serial_out       ; slot 2  $8006
+000009r 2  4C rr rr     J_SERIAL_IN:   jmp serial_in        ; slot 3  $8009
+00000Cr 2  4C rr rr     J_SERIAL_STR:  jmp serial_out_str   ; slot 4  $800C
+00000Fr 2  4C rr rr     J_SERIAL_HEX:  jmp serial_out_hex   ; slot 5  $800F
+000012r 2  4C rr rr     J_OUT_CRLF:    jmp out_crlf         ; slot 6  $8012
+000015r 2  4C rr rr     J_SERIAL_POLL: jmp serial_poll      ; slot 7  $8015
+000018r 2  4C 00 DC     J_BASIC_COLD:  jmp BASIC_COLD_START ; slot 8  $8018  BASIC's own entry, $DC00
+00001Br 2  4C 03 DC     J_BASIC_WARM:  jmp BASIC_WARM_START ; slot 9  $801B  BASIC's own entry, $DC03
+00001Er 2  4C rr rr     J_LOAD:        jmp bios_load        ; slot 10 $801E
+000021r 2  4C rr rr     J_SAVE:        jmp bios_save        ; slot 11 $8021
+000024r 2               
+000024r 2               ; Keep MONITOR as an alias for existing code that referenced it.
+000024r 2               MONITOR = J_MONITOR
+000024r 2               
+000024r 2               ; The table must match bios_jumptable.inc. The table is in a relocatable segment,
+000024r 2               ; so the linker checks these once it has placed HEADER at $8000.
+000024r 2               .assert J_COLD_START  = BIOS_COLD_START,  lderror, "jump table slot 0 does not match bios_jumptable.inc"
+000024r 2               .assert J_MONITOR     = BIOS_MONITOR,     lderror, "jump table slot 1 does not match bios_jumptable.inc"
+000024r 2               .assert J_SERIAL_OUT  = BIOS_SERIAL_OUT,  lderror, "jump table slot 2 does not match bios_jumptable.inc"
+000024r 2               .assert J_SERIAL_IN   = BIOS_SERIAL_IN,   lderror, "jump table slot 3 does not match bios_jumptable.inc"
+000024r 2               .assert J_SERIAL_STR  = BIOS_SERIAL_STR,  lderror, "jump table slot 4 does not match bios_jumptable.inc"
+000024r 2               .assert J_SERIAL_HEX  = BIOS_SERIAL_HEX,  lderror, "jump table slot 5 does not match bios_jumptable.inc"
+000024r 2               .assert J_OUT_CRLF    = BIOS_OUT_CRLF,    lderror, "jump table slot 6 does not match bios_jumptable.inc"
+000024r 2               .assert J_SERIAL_POLL = BIOS_SERIAL_POLL, lderror, "jump table slot 7 does not match bios_jumptable.inc"
+000024r 2               .assert J_BASIC_COLD  = BIOS_BASIC_COLD,  lderror, "jump table slot 8 does not match bios_jumptable.inc"
+000024r 2               .assert J_BASIC_WARM  = BIOS_BASIC_WARM,  lderror, "jump table slot 9 does not match bios_jumptable.inc"
+000024r 2               .assert J_LOAD        = BIOS_LOAD,        lderror, "jump table slot 10 does not match bios_jumptable.inc"
+000024r 2               .assert J_SAVE        = BIOS_SAVE,        lderror, "jump table slot 11 does not match bios_jumptable.inc"
+000024r 2               
+000024r 1               
+000024r 1               ; ## BIOS Start ##
+000024r 1               .segment "BIOS"
 000000r 1  73 69 6D 70    .byte "simple6502 BIOS Ver: "
 000004r 1  6C 65 36 35  
 000008r 1  30 32 20 42  
-000015r 1  30 2E 37 2E    .byte VERSION
+000015r 1  30 2E 38 2E    .byte VERSION
 000019r 1  30           
 00001Ar 1               
 00001Ar 1               ; Reset Vector Start
@@ -916,78 +990,91 @@ Current file: BIOS.s
 0002D7r 1  20 rr rr       jsr serial_out_hex    ; reuse BIOS hex printer
 0002DAr 1  60             rts
 0002DBr 1               
-0002DBr 1               ; ROM Data
-0002DBr 1               ; Startup Messages
-0002DBr 1               startupMessage:
-0002DBr 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
-0002DFr 1  23 20 53 69  
-0002E3r 1  6D 70 6C 65  
-0002F4r 1  30 2E 37 2E    .byte VERSION
-0002F8r 1  30           
-0002F9r 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
-0002FDr 1  0D 0A 00       .byte $0D,$0A,$00
-000300r 1               wozmonMessage:
-000300r 1  0D 0A 3E 20    .byte	CR,LF,"> WozMon <"
-000304r 1  57 6F 7A 4D  
-000308r 1  6F 6E 20 3C  
-00030Cr 1  0D 0A 00       .byte CR,LF,$00
-00030Fr 1               viaMessage:
-00030Fr 1  23 23 20 56    .byte "## VIA1 on $7F20"
-000313r 1  49 41 31 20  
-000317r 1  6F 6E 20 24  
-00031Fr 1  0D 0A 00       .byte CR,LF,$00
-000322r 1               ; Intel HEX loader/saver messages
-000322r 1               loadMsg:
-000322r 1  0D 0A 50 61    .byte CR,LF,"Paste Intel HEX..",CR,LF,$00
-000326r 1  73 74 65 20  
-00032Ar 1  49 6E 74 65  
-000338r 1               okMsg:
-000338r 1  0D 0A 4F 4B    .byte CR,LF,"OK",CR,LF,$00
-00033Cr 1  0D 0A 00     
-00033Fr 1               errMsg:
-00033Fr 1  0D 0A 43 4B    .byte CR,LF,"CKSUM ERR",CR,LF,$00
-000343r 1  53 55 4D 20  
-000347r 1  45 52 52 0D  
-00034Dr 1               eofRec:
-00034Dr 1  3A 30 30 30    .byte ":00000001FF",CR,LF,$00
-000351r 1  30 30 30 30  
-000355r 1  31 46 46 0D  
-00035Br 1               
-00035Br 1               ; ### Interrupt Handlers ###
-00035Br 1               
-00035Br 1               ; # IRQ Handler
-00035Br 1               ; Services VIA1 Timer 1 (the ~10ms tick) by incrementing the 3-byte TOCKS
-00035Br 1               ; jiffy counter. Only A is used, so only A is preserved. Other sources (ACIA
-00035Br 1               ; RX, etc.) can be added here later; unrecognised IRQs simply return.
-00035Br 1               irq_handler:
-00035Br 1  48               pha                   ; preserve A (X,Y untouched below)
-00035Cr 1                   ; Was it VIA1 Timer 1? Check IFR bit 6. (If the VIA is absent this reads
-00035Cr 1                   ; open bus, but then it is not an IRQ source so the board won't assert IRQ.)
-00035Cr 1  AD 2D 7F         lda VIA1_IFR
-00035Fr 1  29 40            and #VIA_IFR_T1
-000361r 1  F0 0D            beq @not_t1           ; not Timer 1 -> nothing we handle
-000363r 1                   ; Clear the Timer 1 interrupt flag by reading T1C-L.
-000363r 1  AD 24 7F         lda VIA1_T1CL
-000366r 1                   ; Increment the 24-bit TOCKS counter (little-endian).
-000366r 1  E6 E0            inc TOCKS_L
-000368r 1  D0 06            bne @done
-00036Ar 1  E6 E1            inc TOCKS_M
-00036Cr 1  D0 02            bne @done
-00036Er 1  E6 E2            inc TOCKS_H
-000370r 1               @done:
-000370r 1               @not_t1:
-000370r 1  68               pla                   ; restore A
-000371r 1  40               rti       ; 40
-000372r 1               
-000372r 1               ; # NMI Handler Vector
-000372r 1               nmi_handler:
-000372r 1  EA               nop       ; EA
+0002DBr 1               ; ### LOAD / SAVE for BASIC (stubs) ###
+0002DBr 1               
+0002DBr 1               ; bios_load, bios_save:
+0002DBr 1               ; The BASIC LOAD and SAVE statements call these through the jump table
+0002DBr 1               ; (BIOS_LOAD, BIOS_SAVE). They are STUBS for now: they return without doing
+0002DBr 1               ; anything. They are meant for the SD card routines. What they take (file name
+0002DBr 1               ; and so on) is not defined yet, it will be documented here when they are written.
+0002DBr 1               ; They are not the monitor's L and S commands (load_ihex and save_ihex).
+0002DBr 1               bios_load:
+0002DBr 1  60             rts
+0002DCr 1               bios_save:
+0002DCr 1  60             rts
+0002DDr 1               
+0002DDr 1               ; ROM Data
+0002DDr 1               ; Startup Messages
+0002DDr 1               startupMessage:
+0002DDr 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
+0002E1r 1  23 20 53 69  
+0002E5r 1  6D 70 6C 65  
+0002F6r 1  30 2E 38 2E    .byte VERSION
+0002FAr 1  30           
+0002FBr 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
+0002FFr 1  0D 0A 00       .byte $0D,$0A,$00
+000302r 1               wozmonMessage:
+000302r 1  0D 0A 3E 20    .byte	CR,LF,"> WozMon <"
+000306r 1  57 6F 7A 4D  
+00030Ar 1  6F 6E 20 3C  
+00030Er 1  0D 0A 00       .byte CR,LF,$00
+000311r 1               viaMessage:
+000311r 1  23 23 20 56    .byte "## VIA1 on $7F20"
+000315r 1  49 41 31 20  
+000319r 1  6F 6E 20 24  
+000321r 1  0D 0A 00       .byte CR,LF,$00
+000324r 1               ; Intel HEX loader/saver messages
+000324r 1               loadMsg:
+000324r 1  0D 0A 50 61    .byte CR,LF,"Paste Intel HEX..",CR,LF,$00
+000328r 1  73 74 65 20  
+00032Cr 1  49 6E 74 65  
+00033Ar 1               okMsg:
+00033Ar 1  0D 0A 4F 4B    .byte CR,LF,"OK",CR,LF,$00
+00033Er 1  0D 0A 00     
+000341r 1               errMsg:
+000341r 1  0D 0A 43 4B    .byte CR,LF,"CKSUM ERR",CR,LF,$00
+000345r 1  53 55 4D 20  
+000349r 1  45 52 52 0D  
+00034Fr 1               eofRec:
+00034Fr 1  3A 30 30 30    .byte ":00000001FF",CR,LF,$00
+000353r 1  30 30 30 30  
+000357r 1  31 46 46 0D  
+00035Dr 1               
+00035Dr 1               ; ### Interrupt Handlers ###
+00035Dr 1               
+00035Dr 1               ; # IRQ Handler
+00035Dr 1               ; Services VIA1 Timer 1 (the ~10ms tick) by incrementing the 3-byte TOCKS
+00035Dr 1               ; jiffy counter. Only A is used, so only A is preserved. Other sources (ACIA
+00035Dr 1               ; RX, etc.) can be added here later; unrecognised IRQs simply return.
+00035Dr 1               irq_handler:
+00035Dr 1  48               pha                   ; preserve A (X,Y untouched below)
+00035Er 1                   ; Was it VIA1 Timer 1? Check IFR bit 6. (If the VIA is absent this reads
+00035Er 1                   ; open bus, but then it is not an IRQ source so the board won't assert IRQ.)
+00035Er 1  AD 2D 7F         lda VIA1_IFR
+000361r 1  29 40            and #VIA_IFR_T1
+000363r 1  F0 0D            beq @not_t1           ; not Timer 1 -> nothing we handle
+000365r 1                   ; Clear the Timer 1 interrupt flag by reading T1C-L.
+000365r 1  AD 24 7F         lda VIA1_T1CL
+000368r 1                   ; Increment the 24-bit TOCKS counter (little-endian).
+000368r 1  E6 E0            inc TOCKS_L
+00036Ar 1  D0 06            bne @done
+00036Cr 1  E6 E1            inc TOCKS_M
+00036Er 1  D0 02            bne @done
+000370r 1  E6 E2            inc TOCKS_H
+000372r 1               @done:
+000372r 1               @not_t1:
+000372r 1  68               pla                   ; restore A
 000373r 1  40               rti       ; 40
 000374r 1               
-000374r 1               ; -- MONITOR --
-000374r 1               ; .org $FF00
-000374r 1               ; ## WozMon ##
-000374r 1               .segment "WOZMON"
+000374r 1               ; # NMI Handler Vector
+000374r 1               nmi_handler:
+000374r 1  EA               nop       ; EA
+000375r 1  40               rti       ; 40
+000376r 1               
+000376r 1               ; -- MONITOR --
+000376r 1               ; .org $FF00
+000376r 1               ; ## WozMon ##
+000376r 1               .segment "WOZMON"
 000000r 1               .include "wozmon_sbc.s"
 000000r 2               ;  The WOZ Monitor for the Apple 1
 000000r 2               ;  Written by Steve Wozniak in 1976

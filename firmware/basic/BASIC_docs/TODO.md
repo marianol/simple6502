@@ -25,7 +25,8 @@
   - `SYS 65536` and `SYS -1` should give `?ILLEGAL QUANTITY ERROR`
   - load a routine ending in `RTS` should run it and return to the OK prompt
   - check that `LIST` shows `SYS` and that the other keywords still work (the token numbers after `CLEAR` moved by one)
-- [ ] `LOAD` and `SAVE` are stubs (`loadsave.s`), hook them to the BIOS
+- [x] `LOAD` and `SAVE` (`loadsave.s`) jump to the BIOS jump table (`BIOS_LOAD`, `BIOS_SAVE`)
+- [ ] the BIOS `LOAD` and `SAVE` are stubs (just `RTS`). Write them (SD card), then parse the file name in `loadsave.s` and pass it to the BIOS
 
 ### Nice to have
 - [ ] `SYS` could load/store the A, X, Y and P registers like the C=64 does (from/to fixed locations)

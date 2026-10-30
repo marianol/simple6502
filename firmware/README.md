@@ -7,7 +7,7 @@ This is a BIOS for the simple6502 SBC.
 - [x] Serial (ACIA): routines to initialize and manage the serial port.
 - [x] Memory Monitor: WozMon, why innovate?
 - [x] LOAD/SAVE over serial using Intel HEX (SD card support to come later)
-- [ ] BASIC: MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM. The source is in [basic/](basic/README.md) and builds into the ROM at $DC00; for now start it from WozMon with `DC00 R`. Still to do: start it from the BIOS and hook up LOAD/SAVE.
+- [ ] BASIC: MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM. The source is in [basic/](basic/README.md) and builds into the ROM at $DC00. The jump table has its cold and warm start entries, for now start it from WozMon with `8018 R`. Still to do: start it from the BIOS, and write the LOAD/SAVE routines (the BIOS has stubs).
 - [ ] SPI Interface with VIA (in IO Card)
 - [ ] SD Card using SPI
 - [ ] VIA helper routines to interface with a 6522 for I/O
@@ -24,6 +24,10 @@ The table is **append-only**: new routines are added at the end, existing slots
 never move. Include `bios_jumptable.inc` in your program and call the `BIOS_*`
 symbols instead of hardcoding addresses.
 
+The table itself is in `bios_header.s` (the `HEADER` segment, included by `BIOS.s`). The
+linker checks it against `bios_jumptable.inc`, so when you append a slot, add its
+equate there too or the build fails.
+
 | Addr  | Symbol            | Routine                                         |
 |-------|-------------------|-------------------------------------------------|
 | $8000 | `BIOS_COLD_START` | Cold start / reset                              |
@@ -34,6 +38,10 @@ symbols instead of hardcoding addresses.
 | $800F | `BIOS_SERIAL_HEX` | Transmit A as two ASCII hex digits              |
 | $8012 | `BIOS_OUT_CRLF`   | Transmit CR + LF                                |
 | $8015 | `BIOS_SERIAL_POLL` | Receive a byte, no echo (carry set if data in A) |
+| $8018 | `BIOS_BASIC_COLD` | Cold start MS BASIC (new program, memory cleared) |
+| $801B | `BIOS_BASIC_WARM` | Warm start MS BASIC (keeps the program and variables) |
+| $801E | `BIOS_LOAD`       | BASIC `LOAD` (stub for now, just `RTS`)         |
+| $8021 | `BIOS_SAVE`       | BASIC `SAVE` (stub for now, just `RTS`)         |
 
 ```asm
 .include "bios_jumptable.inc"
@@ -100,6 +108,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.7.0** — tested and working on board rev 1.6 and in the simple6502 emulator.
+**Version 0.8.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
