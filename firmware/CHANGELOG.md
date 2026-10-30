@@ -20,8 +20,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   reserved for BASIC ($4A-$DD).
 - `docs/ZEROPAGE_MAP.md`: the map of the whole zero page (BIOS and BASIC).
 
+### Removed
+
+- `board_test.s` and its build files in `out/`.
+
 ### Changed
 
+- The user program tools moved to their own folder, `userprog/`, so they build
+  independently of the ROM: `userprg.s`, `make_usr.sh`, `simple6502_RAM-Only.cfg` and
+  `SPI_prg.txt`. `make_usr.sh` runs from any directory, writes to `userprog/out/` (ignored
+  by git, the old `out/userprg.*` files were removed) and finds `bios_jumptable.inc` in the
+  folder or in `BIOS_INC` (default `..`). The program binary is unchanged.
 - `simple6502.cfg` now also has the `BASROM` region ($DC00-$FEFF) for BASIC, and the
   `ROM` region ends at $DBFF. All segments are optional, so the same file links the BIOS
   alone, BASIC alone or both.

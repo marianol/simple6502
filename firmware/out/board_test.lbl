@@ -1,4 +1,0 @@
-al 008021 .nmi_handler
-al 00801F .irq_handler
-al 00801B .do_nothing
-al 008015 .reset

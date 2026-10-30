@@ -58,10 +58,10 @@ syntax:
 
 ### Building loadable programs
 
-`make_usr.sh` assembles a user program with the RAM-only layout and also emits an
-Intel HEX file (via `srec_cat`) alongside the binary. Paste that `.hex` into the
-terminal after the `L` command to load it. The load address comes from the
-`-offset` in `make_usr.sh` (default $0300).
+The tools to write programs that run from RAM are in [userprog/](userprog/README.md).
+`userprog/make_usr.sh` assembles a program and generates an Intel HEX file. Paste that
+`.hex` into the terminal after the `L` command to load it. It is independent of the ROM
+build.
 
 ### Building the full ROM (BIOS + BASIC)
 

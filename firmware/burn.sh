@@ -30,7 +30,7 @@ automatically after programming.
 
 Examples:
   ./burn.sh                 # burn out/BIOS.bin
-  ./burn.sh out/board_test.bin
+  ./burn.sh out/simple6502.bin
 EOF
     exit
 fi
