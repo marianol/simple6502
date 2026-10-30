@@ -23,7 +23,7 @@ Descriptions are inferred from a quick scan of each file.
 | ---- | ------------ |
 | token.s | Keyword table, token numbers and the statement and function vectors. |
 | error.s | Error code table and error message strings. |
-| message.s | Global messages: "ERROR", "IN", "OK", "BREAK". |
+| message.s | Global messages: "ERROR", "IN", "READY.", "BREAK". |
 | memory.s | Stack frame search and memory management (shared by all BASIC versions). |
 | program.s | Error handling, program entry and line editing, tokenizer (`CRUNCH`), detokenizer (`LIST`). |
 | flow1.s | `FOR`/`NEXT`, statement dispatcher (`NEWSTT`), `RESTORE`, `STOP`/`END`. |
@@ -31,7 +31,7 @@ Descriptions are inferred from a quick scan of each file.
 | misc1.s | Line number parsing (`LINGET`), `LET` and string assignment. |
 | misc2.s | `FRE`, `POS`, `DEF FN` and integer-to-float helpers. |
 | chrget.s | `CHRGET` and `CHRGOT` text scanner (copied to zero page at startup). |
-| init.s | Cold start: memory sizing, banner and zero page setup. |
+| init.s | Cold start: memory sizing, banner and zero page setup. Sets `BASIC_STARTED` at the end. |
 
 ## Expressions, variables and math
 
@@ -54,7 +54,7 @@ Descriptions are inferred from a quick scan of each file.
 | input.s | `INPUT`, `READ`, `GET` and input conversion errors. |
 | inline.s | Line input (`INLIN`) from the console. |
 | iscntc.s | Ctrl-C check using `BIOS_SERIAL_POLL`. Any other key is discarded. Falls into `STOP`. |
-| extra.s | `MONRDKEY` (blocking, echoes, handles backspace) and `MONRDKEY2` (non-blocking, for GET), in the `EXTRA` segment. |
+| extra.s | `MONRDKEY` (blocking, echoes, handles backspace), `MONRDKEY2` (non-blocking, for GET) and the `MONITOR` statement, in the `EXTRA` segment. |
 | loadsave.s | The `LOAD` and `SAVE` statements. Each one jumps to the BIOS (`BIOS_LOAD`, `BIOS_SAVE`), which are stubs for now. |
 
 ## Build files (not read by the assembler)

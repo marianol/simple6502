@@ -20,10 +20,10 @@
 - [x] `USR` has its own vector at $4A-$4C (it was an alias of `GORESTART`)
 - [x] TEST `USR` in the emulator, works:
   - `PRINT USR(0)` should give `?ILLEGAL QUANTITY ERROR`
-  - load a routine ending in `RTS` (for example at $0300), then `POKE 75,0 : POKE 76,3 : X=USR(5)` should run it and return to the OK prompt
+  - load a routine ending in `RTS` (for example at $0300), then `POKE 75,0 : POKE 76,3 : X=USR(5)` should run it and return to the READY. prompt
 - [x] TEST `SYS` in the emulator, works:
   - `SYS 65536` and `SYS -1` should give `?ILLEGAL QUANTITY ERROR`
-  - load a routine ending in `RTS` should run it and return to the OK prompt
+  - load a routine ending in `RTS` should run it and return to the READY. prompt
   - check that `LIST` shows `SYS` and that the other keywords still work (the token numbers after `CLEAR` moved by one)
 - [x] `LOAD` and `SAVE` (`loadsave.s`) jump to the BIOS jump table (`BIOS_LOAD`, `BIOS_SAVE`)
 - [ ] the BIOS `LOAD` and `SAVE` are stubs (just `RTS`). Write them (SD card), then parse the file name in `loadsave.s` and pass it to the BIOS

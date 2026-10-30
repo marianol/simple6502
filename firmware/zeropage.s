@@ -106,7 +106,7 @@ SR_REG:
 ; ----------------------------------------------------------------------------
 
 ; ----------------------------------------------------------------------------
-; $E0-$EB BIOS system variables
+; $E0-$EC BIOS system variables
 ; ----------------------------------------------------------------------------
 .org $E0
 TOCKS:                  ; Jiffy-like clock, 3 bytes, ~10ms per tick
@@ -134,5 +134,8 @@ POST_PTR:               ; POST RAM-walk pointer, 2 bytes
   .res 2
 VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
   .res 1
+BASIC_STARTED:          ; non-zero once BASIC has been cold started. The BIOS reset clears it and
+  .res 1                ; BASIC's cold start sets it. The monitor X command warm starts BASIC only
+                        ; if it is set, because a warm start needs what the cold start sets up.
 .assert * <= $100, error, "zero page: BIOS system block runs past the end of the zero page"
 .assert TOCKS > BASIC_ZP_END, error, "zero page: BIOS system block overlaps the BASIC variables"

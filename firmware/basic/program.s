@@ -49,8 +49,8 @@ PRINT_ERROR_LINNUM:
 ; ----------------------------------------------------------------------------
 RESTART:
         lsr     Z14
-        lda     #<QT_OK
-        ldy     #>QT_OK
+        lda     #<QT_READY
+        ldy     #>QT_READY
         jsr     GOSTROUT
 L2351:
         jsr     INLIN

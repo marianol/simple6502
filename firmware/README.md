@@ -7,7 +7,7 @@ This is a BIOS for the simple6502 SBC.
 - [x] Serial (ACIA): routines to initialize and manage the serial port.
 - [x] Memory Monitor: WozMon, why innovate?
 - [x] LOAD/SAVE over serial using Intel HEX (SD card support to come later)
-- [ ] BASIC: MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM. The source is in [basic/](basic/README.md) and builds into the ROM at $DC00. The jump table has its cold and warm start entries, for now start it from WozMon with `8018 R`. Still to do: start it from the BIOS, and write the LOAD/SAVE routines (the BIOS has stubs).
+- [x] BASIC: MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM. The source is in [basic/](basic/README.md) and builds into the ROM at $DC00. The jump table has its cold and warm start entries, from WozMon type `X` (or `8018 R`) to start it, and `MONITOR` in BASIC comes back to WozMon. Still to do: start it from the BIOS, and write the LOAD/SAVE routines (the BIOS has stubs).
 - [ ] SPI Interface with VIA (in IO Card)
 - [ ] SD Card using SPI
 - [ ] VIA helper routines to interface with a 6522 for I/O
@@ -56,6 +56,10 @@ they can also be reused from other code. In addition to WozMon's examine/store
 syntax:
 
 - `R` - run the program at the last examined address (returns to the monitor on `RTS`).
+- `X` - exit to BASIC, like the PET monitor. It warm starts BASIC (`READY.`, the program and
+  variables are kept). If BASIC has not been started since reset it cold starts it instead,
+  because a warm start needs what the cold start sets up. The BASIC `MONITOR` statement
+  comes back here. Needs the full ROM (`make_rom.sh`).
 - `L` - load an Intel HEX stream from the serial terminal. Each record is stored at
   the address carried in the record itself. 
   Each record's checksum is verified; a bad record aborts with `CKSUM ERR`. 
@@ -108,6 +112,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.8.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
+**Version 0.9.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

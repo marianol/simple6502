@@ -17,6 +17,8 @@ Build BASIC on its own with `./make_simple6502.sh`. The output is `out/Simple650
 * `iscntc.s`: Ctrl-C check.
 * `../simple6502.cfg`: linker config for the whole ROM. BASIC is in its own `BASROM` region ($DC00) so it can be merged with the BIOS, which uses the `HEADER`, `BIOS`, `WOZMON` and `RESETVECTORS` segments. Because of this, `header.s` uses a `BASHEADER` segment for this target only.
 * `SYS address`: calls a machine code routine at the address (0 to 65535) and returns to BASIC on `RTS`. Out of range gives ILLEGAL QUANTITY. Unlike the CBM it does not load the A, X, Y and P registers.
+* `MONITOR`: leaves BASIC for the WozMon monitor (through `BIOS_MONITOR`). The monitor's `X` command comes back with a warm start, so the program and variables are kept.
+* The prompt is `READY.` like the Commodore.
 * `USR(x)`: calls a machine code routine. Set its address first with `POKE 75,low` and `POKE 76,high` (the vector is at $4A-$4C). Until then it gives ILLEGAL QUANTITY.
 
 ## More Information

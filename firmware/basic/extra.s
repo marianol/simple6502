@@ -44,5 +44,8 @@ MONRDKEY2:
         lda     #$00
 @got:
         rts
-
-
+; MONITOR: the MONITOR statement. Leaves BASIC for the WozMon monitor, through the BIOS
+; jump table. In the monitor the X command comes back to BASIC with a warm start, so the
+; program and the variables are kept. It does not return here, so it is a JMP.
+MONITOR:
+        jmp     BIOS_MONITOR

@@ -10,8 +10,8 @@ QT_IN:
         .byte   " IN "
         .byte   $00
 
-QT_OK:
-		.byte   CR,LF,"OK",CR,LF
+QT_READY:
+		.byte   CR,LF,"READY.",CR,LF	; CHANGED: was OK, the Commodore prompt
 		.byte	0
 
 QT_BREAK:

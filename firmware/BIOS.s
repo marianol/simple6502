@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.8.0"   ; Define the version number
+.define VERSION "0.9.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
@@ -73,6 +73,7 @@ reset:
   ; ZP and stack are good - establish the stack pointer and carry on.
   ldx #$FF          ; A2 FF
   txs               ; 9A      set the stack start
+  stz BASIC_STARTED ; BASIC has not been started (the ZP test left $AA here)
   jsr post          ; do the rest of POST (RAM walk)
   jsr init_serial   ; init ACIA # IO_8
   jsr via_init      ; detect + init VIA1 (sets carry if present)
@@ -387,11 +388,12 @@ out_crlf:
 ;
 ; cmd_dispatch:
 ; Called from WozMon's command parser with the current input char in A.
-; Decodes the single-letter commands R (run), L (load Intel HEX) and
-; S (save Intel HEX). If the char is none of these, returns with A and X
-; unchanged so WozMon can continue its normal hex parse.
+; Decodes the single-letter commands R (run), L (load Intel HEX),
+; S (save Intel HEX) and X (exit to BASIC, like the PET monitor). If the char
+; is none of these, returns with A and X unchanged so WozMon can continue its
+; normal hex parse.
 ; For R/L/S the command is executed and control returns to WozMon
-; (WARMWOZ) rather than back to the caller.
+; (WARMWOZ) rather than back to the caller. X does not return.
 ; - On no match: A and X preserved, RTS
 cmd_dispatch:
   cmp #'R'          ; run program at XAM address?
@@ -400,6 +402,8 @@ cmd_dispatch:
   beq @load
   cmp #'S'          ; save Intel HEX?
   beq @save
+  cmp #'X'          ; exit to BASIC?
+  beq @basic
   rts               ; not a command, back to WozMon hex parse (A,X intact)
 @run:
   jsr @run_sub      ; JSR so an RTS from the user program returns here
@@ -412,6 +416,13 @@ cmd_dispatch:
 @save:
   jsr save_ihex
   jmp WARMWOZ
+@basic:
+  ; BASIC resets the stack itself, so the return address of the JSR to cmd_dispatch can stay.
+  lda BASIC_STARTED ; has BASIC been started since reset?
+  beq @basic_cold   ; no, its variables are not set up, a warm start would crash
+  jmp J_BASIC_WARM  ; yes, back to the READY prompt, program and variables kept
+@basic_cold:
+  jmp J_BASIC_COLD  ; first time, start BASIC
 
 ; ### Intel HEX Load/Save ###
 

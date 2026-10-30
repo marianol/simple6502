@@ -51,7 +51,7 @@ copy `bios_jumptable.inc` here, or run with `BIOS_INC=/path/to/firmware`.
 ## Zero page
 
 This folder does not use the BIOS zero page map. Check `../docs/ZEROPAGE_MAP.md` before
-using zero page locations: the BIOS, WozMon and the monitor use $00-$46 and $E0-$EB, and
+using zero page locations: the BIOS, WozMon and the monitor use $00-$46 and $E0-$EC, and
 BASIC uses $4A-$DD (WozMon and BASIC never run together with a program of yours).
 
 ## Requirements

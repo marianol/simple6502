@@ -30,6 +30,7 @@
 		keyword_rts "LIST", LIST
 		keyword_rts "CLEAR", CLEAR
 		keyword_rts "SYS", SYS		; ADDED
+		keyword_rts "MONITOR", MONITOR	; ADDED
 		keyword_rts "GET", GET
 		keyword_rts "NEW", NEW
 

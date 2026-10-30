@@ -197,8 +197,10 @@ L4192:
         sty     GOSTROUT+2
         lda     #<RESTART
         ldy     #>RESTART
-        sta     GORESTART+1             ; GORESTART now jumps to RESTART (the OK prompt)
+        sta     GORESTART+1             ; GORESTART now jumps to RESTART (the READY prompt)
         sty     GORESTART+2
+        lda     #$01
+        sta     BASIC_STARTED           ; ADDED: BASIC is set up, the monitor X command may warm start it
         jmp     (GORESTART+1)           ; go to RESTART
 
 

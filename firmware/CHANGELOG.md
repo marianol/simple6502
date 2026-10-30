@@ -5,6 +5,18 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0]
+
+### Added
+
+- `X` monitor command, like the PET monitor: exit to BASIC. It warm starts BASIC if it has
+  been started since reset, and cold starts it if not (a warm start needs what the cold start
+  sets up, otherwise it would jump through uninitialized zero page vectors).
+- `BASIC_STARTED` ($EC) in the zero page map: cleared by the BIOS reset, set by BASIC's cold
+  start.
+- BASIC: `MONITOR` statement (jumps to WozMon through `BIOS_MONITOR`) and the `READY.`
+  prompt instead of `OK`. See `basic/CHANGELOG.md`.
+
 ## [0.8.0]
 
 ### Added

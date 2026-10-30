@@ -6,7 +6,17 @@ All notable changes to this Simple6502 fork of
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+### Added
+- `MONITOR` statement (`extra.s`, keyword in `token.s` after `SYS`): jumps to the WozMon
+  monitor through `BIOS_MONITOR`. The monitor's `X` command returns with a warm start. The
+  token numbers after `SYS` moved by one.
+- The cold start sets `BASIC_STARTED` (`init.s`, the zero page flag from `../zeropage.s`) just
+  before it enters the prompt, so the monitor `X` command knows a warm start is safe.
 ### Changed
+- The prompt is `READY.` instead of `OK` (`QT_OK` is now `QT_READY` in `message.s`).
+- `ref/simple6502_ref.bin` was rebuilt for these changes. It was checked by running BASIC in
+  the emulator: the statements and functions whose token numbers moved, a program with
+  FOR/TO/STEP, IF/AND/NOT/THEN, TAB, SPC, DEF FN and ON GOTO, and the MONITOR / X round trip.
 - `LOAD` and `SAVE` (`loadsave.s`) jump to the BIOS (`BIOS_LOAD` and `BIOS_SAVE`, BIOS v0.8.0),
   which are stubs for now, instead of having their own `rts`. The binary grew 5 bytes and
   `ref/simple6502_ref.bin` was rebuilt: the only differences were the two `jmp`s and the
