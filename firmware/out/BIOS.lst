@@ -404,14 +404,14 @@ Current file: BIOS.s
 00001Er 1  A9 55          lda #$55
 000020r 1  95 00          sta $00,x
 000022r 1  D5 00          cmp $00,x
-000024r 1  D0 53          bne post_fail
+000024r 1  D0 48          bne post_fail
 000026r 1  E8             inx
 000027r 1  D0 F5          bne @zp_55
 000029r 1               @zp_aa:
 000029r 1  A9 AA          lda #$AA
 00002Br 1  95 00          sta $00,x         ; x wrapped back to 0
 00002Dr 1  D5 00          cmp $00,x
-00002Fr 1  D0 48          bne post_fail
+00002Fr 1  D0 3D          bne post_fail
 000031r 1  E8             inx
 000032r 1  D0 F5          bne @zp_aa
 000034r 1               
@@ -421,14 +421,14 @@ Current file: BIOS.s
 000036r 1  A9 55          lda #$55
 000038r 1  9D 00 01       sta $0100,x
 00003Br 1  DD 00 01       cmp $0100,x
-00003Er 1  D0 39          bne post_fail
+00003Er 1  D0 2E          bne post_fail
 000040r 1  E8             inx
 000041r 1  D0 F3          bne @sp_55
 000043r 1               @sp_aa:
 000043r 1  A9 AA          lda #$AA
 000045r 1  9D 00 01       sta $0100,x       ; x wrapped back to 0
 000048r 1  DD 00 01       cmp $0100,x
-00004Br 1  D0 2C          bne post_fail
+00004Br 1  D0 21          bne post_fail
 00004Dr 1  E8             inx
 00004Er 1  D0 F3          bne @sp_aa
 000050r 1               
@@ -446,667 +446,682 @@ Current file: BIOS.s
 000064r 1  20 rr rr       jsr serial_out_str
 000067r 1                 ; If VIA1 was detected, announce it under the banner: "## VIA1 on $7F20"
 000067r 1  20 rr rr       jsr via_report
-00006Ar 1                ; Print woz message
-00006Ar 1  A9 rr          lda #<wozmonMessage
-00006Cr 1  85 E7          sta PTR_TX
-00006Er 1  A9 rr          lda #>wozmonMessage
-000070r 1  85 E8          sta PTR_TX_H
-000072r 1  20 rr rr       jsr serial_out_str
-000075r 1  58             cli               ; enable IRQs now that handlers/VIA are set up
-000076r 1  4C rr rr       jmp WOZMON        ; go to the monitor
-000079r 1               
-000079r 1               
-000079r 1               
-000079r 1               ; ### Subrutines ###
-000079r 1               
-000079r 1               ; post_fail:
-000079r 1               ; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
-000079r 1               ; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
-000079r 1               ; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
-000079r 1               ; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
-000079r 1               ; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
-000079r 1               ; This never returns - a failed ZP/stack test is terminal.
-000079r 1               ; Placed right before the POST tests so the reset-vector ZP/stack checks can
-000079r 1               ; reach it with a direct conditional branch (no trampoline needed).
-000079r 1               ;
-000079r 1               ; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
-000079r 1               ; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
-000079r 1               ; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
-000079r 1               ; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
-000079r 1               ; important for a fault beacon; this just lands it near 1 kHz on a probe.
-000079r 1               ; Uses only the A and X registers - no ZP variables, no stack (it may be
-000079r 1               ; entered before the stack is trusted).
-000079r 1               post_fail:
-000079r 1  A9 01          lda #$01
-00007Br 1  85 00          sta ZP_START          ; write 1 -> D0 high on the bus
-00007Dr 1  A2 B6          ldx #$B6              ; 182 -> ~half period delay (~500 us)
-00007Fr 1               @fh:
-00007Fr 1  CA             dex
-000080r 1  D0 FD          bne @fh
+00006Ar 1  58             cli               ; enable IRQs now that handlers/VIA are set up
+00006Br 1  4C rr rr       jmp WOZMON_COLD   ; go to the monitor
+00006Er 1               
+00006Er 1               
+00006Er 1               
+00006Er 1               ; ### Subrutines ###
+00006Er 1               
+00006Er 1               ; post_fail:
+00006Er 1               ; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
+00006Er 1               ; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
+00006Er 1               ; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
+00006Er 1               ; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
+00006Er 1               ; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
+00006Er 1               ; This never returns - a failed ZP/stack test is terminal.
+00006Er 1               ; Placed right before the POST tests so the reset-vector ZP/stack checks can
+00006Er 1               ; reach it with a direct conditional branch (no trampoline needed).
+00006Er 1               ;
+00006Er 1               ; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
+00006Er 1               ; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
+00006Er 1               ; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
+00006Er 1               ; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
+00006Er 1               ; important for a fault beacon; this just lands it near 1 kHz on a probe.
+00006Er 1               ; Uses only the A and X registers - no ZP variables, no stack (it may be
+00006Er 1               ; entered before the stack is trusted).
+00006Er 1               post_fail:
+00006Er 1  A9 01          lda #$01
+000070r 1  85 00          sta ZP_START          ; write 1 -> D0 high on the bus
+000072r 1  A2 B6          ldx #$B6              ; 182 -> ~half period delay (~500 us)
+000074r 1               @fh:
+000074r 1  CA             dex
+000075r 1  D0 FD          bne @fh
+000077r 1  A9 00          lda #$00
+000079r 1  85 00          sta ZP_START          ; write 0 -> D0 low on the bus
+00007Br 1  A2 B6          ldx #$B6
+00007Dr 1               @fl:
+00007Dr 1  CA             dex
+00007Er 1  D0 FD          bne @fl
+000080r 1  80 EC          bra post_fail         ; loop forever (fault beacon)
+000082r 1               
+000082r 1               ; post:
+000082r 1               ; Power on Self Test
+000082r 1               ; post runs after the early ZP/stack test, so the
+000082r 1               ; stack is already trusted here and we may use subroutines/registers freely.
+000082r 1               post:
+000082r 1                 ; --- Walk RAM from $0200 up, store top of RAM in RAM_SIZE ---
+000082r 1                 ; Checkerboard-test each byte ($55 then $AA) and read it back. Stop at the
+000082r 1                 ; first byte that fails or when we reach the I/O space at $7F00 (we must
+000082r 1                 ; NOT write into $7F00+ which would hit real hardware registers). RAM_SIZE
+000082r 1                 ; holds the first non-RAM address, i.e. (top usable RAM address + 1).
+000082r 1                 ; This is destructive, which is fine at cold boot (RAM is undefined anyway).
 000082r 1  A9 00          lda #$00
-000084r 1  85 00          sta ZP_START          ; write 0 -> D0 low on the bus
-000086r 1  A2 B6          ldx #$B6
-000088r 1               @fl:
-000088r 1  CA             dex
-000089r 1  D0 FD          bne @fl
-00008Br 1  80 EC          bra post_fail         ; loop forever (fault beacon)
-00008Dr 1               
-00008Dr 1               ; post:
-00008Dr 1               ; Power on Self Test
-00008Dr 1               ; post runs after the early ZP/stack test, so the
-00008Dr 1               ; stack is already trusted here and we may use subroutines/registers freely.
-00008Dr 1               post:
-00008Dr 1                 ; --- Walk RAM from $0200 up, store top of RAM in RAM_SIZE ---
-00008Dr 1                 ; Checkerboard-test each byte ($55 then $AA) and read it back. Stop at the
-00008Dr 1                 ; first byte that fails or when we reach the I/O space at $7F00 (we must
-00008Dr 1                 ; NOT write into $7F00+ which would hit real hardware registers). RAM_SIZE
-00008Dr 1                 ; holds the first non-RAM address, i.e. (top usable RAM address + 1).
-00008Dr 1                 ; This is destructive, which is fine at cold boot (RAM is undefined anyway).
-00008Dr 1  A9 00          lda #$00
-00008Fr 1  85 E9          sta POST_PTR          ; pointer low  = $00
-000091r 1  A9 02          lda #$02
-000093r 1  85 EA          sta POST_PTR+1        ; pointer high = $02  -> start at $0200
-000095r 1               @ram_walk:
-000095r 1                 ; stop once we reach I/O space ($7F00)
-000095r 1  A5 EA          lda POST_PTR+1
-000097r 1  C9 7F          cmp #$7F
-000099r 1  F0 1E          beq @ram_done         ; high byte $7F and low byte $00 -> at $7F00
-00009Br 1  A0 00          ldy #0
-00009Dr 1  A9 55          lda #$55              ; pattern 1
-00009Fr 1  91 E9          sta (POST_PTR),y
-0000A1r 1  B1 E9          lda (POST_PTR),y
-0000A3r 1  C9 55          cmp #$55
-0000A5r 1  D0 12          bne @ram_done         ; readback failed -> end of RAM
-0000A7r 1  A9 AA          lda #$AA              ; pattern 2
-0000A9r 1  91 E9          sta (POST_PTR),y
-0000ABr 1  B1 E9          lda (POST_PTR),y
-0000ADr 1  C9 AA          cmp #$AA
-0000AFr 1  D0 08          bne @ram_done         ; readback failed -> end of RAM
-0000B1r 1                 ; byte good, advance pointer
-0000B1r 1  E6 E9          inc POST_PTR
-0000B3r 1  D0 E0          bne @ram_walk
-0000B5r 1  E6 EA          inc POST_PTR+1
-0000B7r 1  80 DC          bra @ram_walk
-0000B9r 1               @ram_done:
-0000B9r 1                 ; POST_PTR now points one past the last good RAM byte -> store as RAM_SIZE
-0000B9r 1  A5 E9          lda POST_PTR
-0000BBr 1  85 E3          sta RAM_SIZE_L
-0000BDr 1  A5 EA          lda POST_PTR+1
-0000BFr 1  85 E4          sta RAM_SIZE_H
-0000C1r 1               
-0000C1r 1                 ; --- VIA1 Timer 1 periodic tick (TOCKS jiffy clock) ---
-0000C1r 1                 ; STUB: left for when the VIA routines are implemented. This will configure
-0000C1r 1                 ; VIA1 Timer 1 for a ~10ms periodic IRQ and the IRQ handler will increment
-0000C1r 1                 ; the 3-byte TOCKS counter. The VIA is on the external I/O card (not onboard
-0000C1r 1                 ; in rev 1.6), so this stays a stub for now.
-0000C1r 1  EA             nop
-0000C2r 1  60             rts
-0000C3r 1               
-0000C3r 1               ; ### Serial Routines ###
-0000C3r 1               ; Initializes the on board serial interface
-0000C3r 1               ; Reset and set config for the ACIA. Init the RX buffer pointer
-0000C3r 1               init_serial:
-0000C3r 1  A9 03          lda #ACIA_RESET
-0000C5r 1  8D 72 7F       sta ACIA_CONTROL
-0000C8r 1  A9 16          lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
-0000CAr 1  8D 72 7F       sta ACIA_CONTROL
-0000CDr 1                 ; Init the RX buffer pointers
-0000CDr 1  A9 00          lda #0
-0000CFr 1  85 E5          sta PTR_RD_RX_BUF
-0000D1r 1  85 E6          sta PTR_WR_RX_BUF
-0000D3r 1  60             rts
-0000D4r 1               
-0000D4r 1               ; ### VIA Routines ###
-0000D4r 1               
-0000D4r 1               ; via_init:
-0000D4r 1               ; Detect VIA1 (on the external I/O card, $7F20) and, if present, set up
-0000D4r 1               ; Timer 1 as a free-running ~10ms periodic interrupt that drives the TOCKS
-0000D4r 1               ; jiffy clock (incremented in the IRQ handler).
-0000D4r 1               ;
-0000D4r 1               ; Detection: DDRB is a plain read/write register with no external side effect
-0000D4r 1               ; on the value stored, so we write two patterns ($55, $AA) and read them back.
-0000D4r 1               ; An absent card reads back open-bus / mirror values and will fail one of the
-0000D4r 1               ; two checks. (Writing DDRB only sets pin directions, harmless for detection.)
-0000D4r 1               ;
-0000D4r 1               ; Sets VIA_PRESENT (and returns carry set) if the VIA responded; clears both
-0000D4r 1               ; otherwise. Leaves IRQs enabled on the VIA only when present.
-0000D4r 1               ; Clobbers A, X.
-0000D4r 1               via_init:
-0000D4r 1  64 EB          stz VIA_PRESENT       ; assume absent until proven
-0000D6r 1                 ; --- presence check on DDRB ---
-0000D6r 1  A9 55          lda #$55
-0000D8r 1  8D 22 7F       sta VIA1_DDRB
-0000DBr 1  CD 22 7F       cmp VIA1_DDRB
-0000DEr 1  D0 37          bne @absent
-0000E0r 1  A9 AA          lda #$AA
-0000E2r 1  8D 22 7F       sta VIA1_DDRB
-0000E5r 1  CD 22 7F       cmp VIA1_DDRB
-0000E8r 1  D0 2D          bne @absent
-0000EAr 1                 ; --- VIA present: configure Timer 1 free-run tick ---
-0000EAr 1  A9 00          lda #$00
-0000ECr 1  8D 22 7F       sta VIA1_DDRB         ; leave Port B as inputs (benign default)
-0000EFr 1  8D 23 7F       sta VIA1_DDRA         ; leave Port A as inputs too
-0000F2r 1                 ; clear the 3-byte TOCKS jiffy counter
-0000F2r 1  64 E0          stz TOCKS_L
-0000F4r 1  64 E1          stz TOCKS_M
-0000F6r 1  64 E2          stz TOCKS_H
-0000F8r 1                 ; disable all VIA interrupt sources first
-0000F8r 1  A9 7F          lda #VIA_IER_CLR_ALL
-0000FAr 1  8D 2E 7F       sta VIA1_IER
-0000FDr 1                 ; ACR: Timer 1 continuous (free-run), PB7 output off
-0000FDr 1  A9 40          lda #VIA_ACR_T1_FREERUN
-0000FFr 1  8D 2B 7F       sta VIA1_ACR
-000102r 1                 ; load Timer 1 latch/counter for the ~10ms period
-000102r 1  A9 FE          lda #<VIA_T1_10MS
-000104r 1  8D 24 7F       sta VIA1_T1CL         ; writing T1C-L loads the low latch
-000107r 1  A9 47          lda #>VIA_T1_10MS
-000109r 1  8D 25 7F       sta VIA1_T1CH         ; writing T1C-H loads high latch + starts T1
-00010Cr 1                 ; enable the Timer 1 interrupt
-00010Cr 1  A9 C0          lda #VIA_IER_T1_ENABLE
-00010Er 1  8D 2E 7F       sta VIA1_IER
-000111r 1                 ; mark present
-000111r 1  A9 01          lda #$01
-000113r 1  85 EB          sta VIA_PRESENT
-000115r 1  38             sec                   ; carry set = present
-000116r 1  60             rts
-000117r 1               @absent:
-000117r 1  9C 22 7F       stz VIA1_DDRB         ; restore a benign DDRB (inputs)
-00011Ar 1  64 EB          stz VIA_PRESENT
-00011Cr 1  18             clc                   ; carry clear = absent
-00011Dr 1  60             rts
-00011Er 1               
-00011Er 1               ; via_report:
-00011Er 1               ; If VIA1 was detected, print a line under the BIOS banner:
-00011Er 1               ;   ## VIA1 on $7F20
-00011Er 1               ; Does nothing if the VIA is absent. Clobbers A, Y.
-00011Er 1               via_report:
-00011Er 1  A5 EB          lda VIA_PRESENT
-000120r 1  F0 0B          beq @done
-000122r 1  A9 rr          lda #<viaMessage
-000124r 1  85 E7          sta PTR_TX
-000126r 1  A9 rr          lda #>viaMessage
-000128r 1  85 E8          sta PTR_TX_H
-00012Ar 1  20 rr rr       jsr serial_out_str
-00012Dr 1               @done:
-00012Dr 1  60             rts
-00012Er 1               
-00012Er 1               ; serial_out:
-00012Er 1               ; Transmit the char in the A Register via the on board
-00012Er 1               ; serial ACIA TTL-RS232
-00012Er 1               ; This routine uses pooling mode and will wait until the ACIA
-00012Er 1               ; TX Data Register (TXDR) bit 1 is Empty to send the character.
-00012Er 1               serial_out:
-00012Er 1  48             pha
-00012Fr 1                 pool_acia: ; pulling mode until ready to TX
-00012Fr 1  AD 72 7F         lda ACIA_STATUS
-000132r 1  29 02            and #ACIA_TDRE     ; looking at Bit 1 TX Data Register Empty > High = Empty
-000134r 1  F0 F9            beq pool_acia     ; pooling loop if empty
-000136r 1  68             pla
-000137r 1  8D 73 7F       sta ACIA_DATA       ; output char in A to TDRE
-00013Ar 1  60             rts
-00013Br 1               
-00013Br 1               ; serial_poll:
-00013Br 1               ; Non-blocking, NON-echoing read of the ACIA. Checks whether a byte is
-00013Br 1               ; waiting and returns immediately either way.
-00013Br 1               ; - Byte waiting: byte in A, Carry set
-00013Br 1               ; - Nothing waiting: Carry clear (A is undefined)
-00013Br 1               ; - X, Y preserved
-00013Br 1               ; Intended for programs that poll the keyboard (BASIC GET / Ctrl-C check,
-00013Br 1               ; games, editors) and do their own echoing.
-00013Br 1               serial_poll:
-00013Br 1  AD 72 7F       lda ACIA_STATUS
-00013Er 1  29 01          and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
-000140r 1  F0 05          beq @no_data      ; nothing in the RX Buffer
-000142r 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
-000145r 1  38             sec               ; we have data set Carry
-000146r 1  60             rts
+000084r 1  85 E9          sta POST_PTR          ; pointer low  = $00
+000086r 1  A9 02          lda #$02
+000088r 1  85 EA          sta POST_PTR+1        ; pointer high = $02  -> start at $0200
+00008Ar 1               @ram_walk:
+00008Ar 1                 ; stop once we reach I/O space ($7F00)
+00008Ar 1  A5 EA          lda POST_PTR+1
+00008Cr 1  C9 7F          cmp #$7F
+00008Er 1  F0 1E          beq @ram_done         ; high byte $7F and low byte $00 -> at $7F00
+000090r 1  A0 00          ldy #0
+000092r 1  A9 55          lda #$55              ; pattern 1
+000094r 1  91 E9          sta (POST_PTR),y
+000096r 1  B1 E9          lda (POST_PTR),y
+000098r 1  C9 55          cmp #$55
+00009Ar 1  D0 12          bne @ram_done         ; readback failed -> end of RAM
+00009Cr 1  A9 AA          lda #$AA              ; pattern 2
+00009Er 1  91 E9          sta (POST_PTR),y
+0000A0r 1  B1 E9          lda (POST_PTR),y
+0000A2r 1  C9 AA          cmp #$AA
+0000A4r 1  D0 08          bne @ram_done         ; readback failed -> end of RAM
+0000A6r 1                 ; byte good, advance pointer
+0000A6r 1  E6 E9          inc POST_PTR
+0000A8r 1  D0 E0          bne @ram_walk
+0000AAr 1  E6 EA          inc POST_PTR+1
+0000ACr 1  80 DC          bra @ram_walk
+0000AEr 1               @ram_done:
+0000AEr 1                 ; POST_PTR now points one past the last good RAM byte -> store as RAM_SIZE
+0000AEr 1  A5 E9          lda POST_PTR
+0000B0r 1  85 E3          sta RAM_SIZE_L
+0000B2r 1  A5 EA          lda POST_PTR+1
+0000B4r 1  85 E4          sta RAM_SIZE_H
+0000B6r 1               
+0000B6r 1                 ; --- VIA1 Timer 1 periodic tick (TOCKS jiffy clock) ---
+0000B6r 1                 ; STUB: left for when the VIA routines are implemented. This will configure
+0000B6r 1                 ; VIA1 Timer 1 for a ~10ms periodic IRQ and the IRQ handler will increment
+0000B6r 1                 ; the 3-byte TOCKS counter. The VIA is on the external I/O card (not onboard
+0000B6r 1                 ; in rev 1.6), so this stays a stub for now.
+0000B6r 1  EA             nop
+0000B7r 1  60             rts
+0000B8r 1               
+0000B8r 1               ; ### VIA Routines ###
+0000B8r 1               
+0000B8r 1               ; via_init:
+0000B8r 1               ; Detect VIA1 (on the external I/O card, $7F20) and, if present, set up
+0000B8r 1               ; Timer 1 as a free-running ~10ms periodic interrupt that drives the TOCKS
+0000B8r 1               ; jiffy clock (incremented in the IRQ handler).
+0000B8r 1               ;
+0000B8r 1               ; Detection: DDRB is a plain read/write register with no external side effect
+0000B8r 1               ; on the value stored, so we write two patterns ($55, $AA) and read them back.
+0000B8r 1               ; An absent card reads back open-bus / mirror values and will fail one of the
+0000B8r 1               ; two checks. (Writing DDRB only sets pin directions, harmless for detection.)
+0000B8r 1               ;
+0000B8r 1               ; Sets VIA_PRESENT (and returns carry set) if the VIA responded; clears both
+0000B8r 1               ; otherwise. Leaves IRQs enabled on the VIA only when present.
+0000B8r 1               ; Overwrites A, X.
+0000B8r 1               via_init:
+0000B8r 1  64 EB          stz VIA_PRESENT       ; assume absent until proven
+0000BAr 1                 ; --- presence check on DDRB ---
+0000BAr 1  A9 55          lda #$55
+0000BCr 1  8D 22 7F       sta VIA1_DDRB
+0000BFr 1  CD 22 7F       cmp VIA1_DDRB
+0000C2r 1  D0 37          bne @absent
+0000C4r 1  A9 AA          lda #$AA
+0000C6r 1  8D 22 7F       sta VIA1_DDRB
+0000C9r 1  CD 22 7F       cmp VIA1_DDRB
+0000CCr 1  D0 2D          bne @absent
+0000CEr 1                 ; --- VIA present: configure Timer 1 free-run tick ---
+0000CEr 1  A9 00          lda #$00
+0000D0r 1  8D 22 7F       sta VIA1_DDRB         ; leave Port B as inputs (benign default)
+0000D3r 1  8D 23 7F       sta VIA1_DDRA         ; leave Port A as inputs too
+0000D6r 1                 ; clear the 3-byte TOCKS jiffy counter
+0000D6r 1  64 E0          stz TOCKS_L
+0000D8r 1  64 E1          stz TOCKS_M
+0000DAr 1  64 E2          stz TOCKS_H
+0000DCr 1                 ; disable all VIA interrupt sources first
+0000DCr 1  A9 7F          lda #VIA_IER_CLR_ALL
+0000DEr 1  8D 2E 7F       sta VIA1_IER
+0000E1r 1                 ; ACR: Timer 1 continuous (free-run), PB7 output off
+0000E1r 1  A9 40          lda #VIA_ACR_T1_FREERUN
+0000E3r 1  8D 2B 7F       sta VIA1_ACR
+0000E6r 1                 ; load Timer 1 latch/counter for the ~10ms period
+0000E6r 1  A9 FE          lda #<VIA_T1_10MS
+0000E8r 1  8D 24 7F       sta VIA1_T1CL         ; writing T1C-L loads the low latch
+0000EBr 1  A9 47          lda #>VIA_T1_10MS
+0000EDr 1  8D 25 7F       sta VIA1_T1CH         ; writing T1C-H loads high latch + starts T1
+0000F0r 1                 ; enable the Timer 1 interrupt
+0000F0r 1  A9 C0          lda #VIA_IER_T1_ENABLE
+0000F2r 1  8D 2E 7F       sta VIA1_IER
+0000F5r 1                 ; mark present
+0000F5r 1  A9 01          lda #$01
+0000F7r 1  85 EB          sta VIA_PRESENT
+0000F9r 1  38             sec                   ; carry set = present
+0000FAr 1  60             rts
+0000FBr 1               @absent:
+0000FBr 1  9C 22 7F       stz VIA1_DDRB         ; restore a benign DDRB (inputs)
+0000FEr 1  64 EB          stz VIA_PRESENT
+000100r 1  18             clc                   ; carry clear = absent
+000101r 1  60             rts
+000102r 1               
+000102r 1               ; via_report:
+000102r 1               ; If VIA1 was detected, print a line under the BIOS banner:
+000102r 1               ;   ## VIA1 on $7F20
+000102r 1               ; Does nothing if the VIA is absent. Overwrites A, Y.
+000102r 1               via_report:
+000102r 1  A5 EB          lda VIA_PRESENT
+000104r 1  F0 0B          beq @done
+000106r 1  A9 rr          lda #<viaMessage
+000108r 1  85 E7          sta PTR_TX
+00010Ar 1  A9 rr          lda #>viaMessage
+00010Cr 1  85 E8          sta PTR_TX_H
+00010Er 1  20 rr rr       jsr serial_out_str
+000111r 1               @done:
+000111r 1  60             rts
+000112r 1               
+000112r 1               
+000112r 1               ; ### Serial Routines ###
+000112r 1               ; Initializes the on board serial interface
+000112r 1               ; Reset and set config for the ACIA. Init the RX buffer pointer
+000112r 1               init_serial:
+000112r 1  A9 03          lda #ACIA_RESET
+000114r 1  8D 72 7F       sta ACIA_CONTROL
+000117r 1  A9 16          lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
+000119r 1  8D 72 7F       sta ACIA_CONTROL
+00011Cr 1                 ; Init the RX buffer pointers
+00011Cr 1  A9 00          lda #0
+00011Er 1  85 E5          sta PTR_RD_RX_BUF
+000120r 1  85 E6          sta PTR_WR_RX_BUF
+000122r 1  60             rts
+000123r 1               
+000123r 1               
+000123r 1               ; serial_out:
+000123r 1               ; Transmit the char in the A Register via the on board
+000123r 1               ; serial ACIA TTL-RS232
+000123r 1               ; This routine uses pooling mode and will wait until the ACIA
+000123r 1               ; TX Data Register (TXDR) bit 1 is Empty to send the character.
+000123r 1               serial_out:
+000123r 1  48             pha
+000124r 1                 pool_acia: ; pulling mode until ready to TX
+000124r 1  AD 72 7F         lda ACIA_STATUS
+000127r 1  29 02            and #ACIA_TDRE     ; looking at Bit 1 TX Data Register Empty > High = Empty
+000129r 1  F0 F9            beq pool_acia     ; pooling loop if empty
+00012Br 1  68             pla
+00012Cr 1  8D 73 7F       sta ACIA_DATA       ; output char in A to TDRE
+00012Fr 1  60             rts
+000130r 1               
+000130r 1               ; serial_poll:
+000130r 1               ; Non-blocking, NON-echoing read of the ACIA. Checks whether a byte is
+000130r 1               ; waiting and returns immediately either way.
+000130r 1               ; - Byte waiting: byte in A, Carry set
+000130r 1               ; - Nothing waiting: Carry clear (A is undefined)
+000130r 1               ; - X, Y preserved
+000130r 1               ; Intended for programs that poll the keyboard (BASIC GET / Ctrl-C check,
+000130r 1               ; games, editors) and do their own echoing.
+000130r 1               serial_poll:
+000130r 1  AD 72 7F       lda ACIA_STATUS
+000133r 1  29 01          and #ACIA_RDRF    ; look at Bit 0 RX Data Register Full > High = Full
+000135r 1  F0 05          beq @no_data      ; nothing in the RX Buffer
+000137r 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
+00013Ar 1  38             sec               ; we have data set Carry
+00013Br 1  60             rts
+00013Cr 1               @no_data:
+00013Cr 1  18             clc               ; no data RX clear carry
+00013Dr 1  60             rts
+00013Er 1               
+00013Er 1               ; serial_in:
+00013Er 1               ; Takes the byte recived by that ACIA and returns it in A (acumulator)
+00013Er 1               ; if a byte was received sets the Carry Flag, if not it clears it
+00013Er 1               ; Same as serial_poll, but echoes the received byte back to the terminal.
+00013Er 1               ;
+00013Er 1               serial_in:
+00013Er 1  20 rr rr       jsr serial_poll   ; non-blocking read, no echo
+000141r 1  90 04          bcc @no_data      ; nothing received, carry already clear
+000143r 1  20 rr rr       jsr serial_out    ; echo back (returns the byte in A)
+000146r 1  38             sec               ; we have data set Carry
 000147r 1               @no_data:
-000147r 1  18             clc               ; no data RX clear carry
-000148r 1  60             rts
-000149r 1               
-000149r 1               ; serial_in:
-000149r 1               ; Takes the byte recived by that ACIA and returns it in A (acumulator)
-000149r 1               ; if a byte was received sets the Carry Flag, if not it clears it
-000149r 1               ; Same as serial_poll, but echoes the received byte back to the terminal.
-000149r 1               ;
-000149r 1               serial_in:
-000149r 1  20 rr rr       jsr serial_poll   ; non-blocking read, no echo
-00014Cr 1  90 04          bcc @no_data      ; nothing received, carry already clear
-00014Er 1  20 rr rr       jsr serial_out    ; echo back (returns the byte in A)
-000151r 1  38             sec               ; we have data set Carry
-000152r 1               @no_data:
+000147r 1  60             rts
+000148r 1               
+000148r 1               ; serial_in_raw:
+000148r 1               ; Blocking read of one byte from the ACIA into A. No echo, no buffering.
+000148r 1               ; Spins until a byte is available in the RX Data Register.
+000148r 1               ; Used by the Intel HEX loader where we parse before echoing.
+000148r 1               ; - A holds the received byte on return
+000148r 1               ; - X, Y preserved
+000148r 1               serial_in_raw:
+000148r 1  AD 72 7F       lda ACIA_STATUS
+00014Br 1  29 01          and #ACIA_RDRF    ; Bit 0 RX Data Register Full > High = Full
+00014Dr 1  F0 F9          beq serial_in_raw ; wait for a byte
+00014Fr 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
 000152r 1  60             rts
 000153r 1               
-000153r 1               ; serial_in_raw:
-000153r 1               ; Blocking read of one byte from the ACIA into A. No echo, no buffering.
-000153r 1               ; Spins until a byte is available in the RX Data Register.
-000153r 1               ; Used by the Intel HEX loader where we parse before echoing.
-000153r 1               ; - A holds the received byte on return
-000153r 1               ; - X, Y preserved
-000153r 1               serial_in_raw:
-000153r 1  AD 72 7F       lda ACIA_STATUS
-000156r 1  29 01          and #ACIA_RDRF    ; Bit 0 RX Data Register Full > High = Full
-000158r 1  F0 F9          beq serial_in_raw ; wait for a byte
-00015Ar 1  AD 73 7F       lda ACIA_DATA     ; load the byte to A
-00015Dr 1  60             rts
-00015Er 1               
-00015Er 1               ; serial_out_str:
-00015Er 1               ; Sends the a null terminated string via serial
-00015Er 1               ; uses the ZP variable PTR_TX (PTR_TX_L + PTR_TX_H) as the pointer
-00015Er 1               ; to the string memory location
-00015Er 1               ; - Y register is not preserved
-00015Er 1               serial_out_str:
-00015Er 1  A0 00          ldy #0
-000160r 1                 @loop:
-000160r 1  B1 E7            lda (PTR_TX),y
-000162r 1  F0 06            beq @null_found
-000164r 1  20 rr rr         jsr serial_out
-000167r 1  C8               iny
-000168r 1  80 F6            bra @loop
-00016Ar 1                 @null_found:
-00016Ar 1  60             rts
-00016Br 1               
-00016Br 1               ; # Helper Routines for Serial comms
-00016Br 1               
-00016Br 1               ; serial_out_hex:
-00016Br 1               ; Transmit the value of the A Register as ASCII HEX byte
-00016Br 1               ; Need to check this routine, can be optimized
-00016Br 1               serial_out_hex:
-00016Br 1  48             pha             ; keep the register for further manipulation
-00016Cr 1  4A             lsr             ; process the high nibble (MSD) shifting it to the low nibble
-00016Dr 1  4A             lsr
-00016Er 1  4A             lsr
-00016Fr 1  4A             lsr
-000170r 1  29 0F          and #$0F        ; Mask LSD for hex print.
-000172r 1  09 30          ora #$30        ; this is like adding $30 > ASCII numbers start at $30 the OR %00110000 sets the high bits shifting the hex value to the right place.
-000174r 1  C9 3A          cmp #$3A        ; is less than '9' $39
-000176r 1  90 02          bcc @done       ; A is < 9 ($3A) so we already have the ASCII of the number
-000178r 1  69 06          adc #$06        ; A is > 9 ($3A) so add 6 + carry (carry is set by CMP) to offset for letters (A $41 - F $46)
-00017Ar 1               @done:
-00017Ar 1  20 rr rr       jsr serial_out  ; send the MSD since its ready
-00017Dr 1  68             pla             ; get the original value back
-00017Er 1  29 0F          and #$0F        ; process the low nibble (LSD)
-000180r 1  09 30          ora #$30
-000182r 1  C9 3A          cmp #$3A
-000184r 1  90 02          bcc @done2
-000186r 1  69 06          adc #$06
-000188r 1               @done2:
-000188r 1  20 rr rr       jsr serial_out
-00018Br 1  60             rts
-00018Cr 1               
-00018Cr 1               ; out_crlf
-00018Cr 1               ; Transmit a CR+LF > $0D,$0A
-00018Cr 1               ; Preserves all registers
-00018Cr 1               out_crlf:
-00018Cr 1  48             pha
-00018Dr 1  A9 0D          lda #CR
-00018Fr 1  20 rr rr       jsr serial_out
-000192r 1  A9 0A          lda #LF
-000194r 1  20 rr rr       jsr serial_out
-000197r 1  68             pla
-000198r 1  60             rts
-000199r 1               
-000199r 1               ; ### Monitor Command Dispatch & Intel HEX Load/Save ###
-000199r 1               
-000199r 1               ; cmd_dispatch:
-000199r 1               ; Called from WozMon's command parser with the current input char in A.
-000199r 1               ; Decodes the single-letter commands R (run), L (load Intel HEX) and
-000199r 1               ; S (save Intel HEX). If the char is none of these, returns with A and X
-000199r 1               ; unchanged so WozMon can continue its normal hex parse.
-000199r 1               ; For R/L/S the command is executed and control returns to WozMon
-000199r 1               ; (WARMWOZ) rather than back to the caller.
-000199r 1               ; - On no match: A and X preserved, RTS
-000199r 1               cmd_dispatch:
-000199r 1  C9 52          cmp #'R'          ; run program at XAM address?
-00019Br 1  F0 09          beq @run
-00019Dr 1  C9 4C          cmp #'L'          ; load Intel HEX?
-00019Fr 1  F0 0E          beq @load
-0001A1r 1  C9 53          cmp #'S'          ; save Intel HEX?
-0001A3r 1  F0 10          beq @save
-0001A5r 1  60             rts               ; not a command, back to WozMon hex parse (A,X intact)
-0001A6r 1               @run:
-0001A6r 1  20 rr rr       jsr @run_sub      ; JSR so an RTS from the user program returns here
-0001A9r 1  4C rr rr       jmp WARMWOZ       ; then warm-start the monitor
-0001ACr 1               @run_sub:
-0001ACr 1  6C 24 00       jmp (XAML)        ; run at the last XAM address
-0001AFr 1               @load:
-0001AFr 1  20 rr rr       jsr load_ihex
-0001B2r 1  4C rr rr       jmp WARMWOZ
-0001B5r 1               @save:
-0001B5r 1  20 rr rr       jsr save_ihex
-0001B8r 1  4C rr rr       jmp WARMWOZ
-0001BBr 1               
-0001BBr 1               ; load_ihex:
-0001BBr 1               ; Receive an Intel HEX stream from the serial port and store it in memory.
-0001BBr 1               ; Each data record (type 00) is written at the 16-bit address carried in the
-0001BBr 1               ; record itself, so no manual deposit address is needed. A record checksum is
-0001BBr 1               ; verified; on mismatch the load aborts with an error message. An EOF record
-0001BBr 1               ; (type 01) ends the load with "OK".
-0001BBr 1               ; Record: ':' LL AAAA TT <data...> CC   (all hex ASCII)
-0001BBr 1               ; Uses IHEX_* zero page scratch. Clobbers A, X, Y.
-0001BBr 1               load_ihex:
-0001BBr 1                 ; prompt
-0001BBr 1  A9 rr          lda #<loadMsg
-0001BDr 1  85 E7          sta PTR_TX
-0001BFr 1  A9 rr          lda #>loadMsg
-0001C1r 1  85 E8          sta PTR_TX_H
-0001C3r 1  20 rr rr       jsr serial_out_str
-0001C6r 1               @next_record:
-0001C6r 1  20 rr rr       jsr serial_in_raw     ; wait for start-of-record
-0001C9r 1  C9 3A          cmp #':'
-0001CBr 1  D0 F9          bne @next_record      ; ignore anything until a ':' (CR/LF between records)
-0001CDr 1  64 34          stz IHEX_SUM          ; reset running checksum (65C02 stz)
-0001CFr 1  20 rr rr       jsr get_hex_byte      ; LL  byte count
-0001D2r 1  85 32          sta IHEX_LEN
-0001D4r 1  20 rr rr       jsr get_hex_byte      ; AAAA high byte of address
-0001D7r 1  85 31          sta IHEX_ADDR_H
-0001D9r 1  20 rr rr       jsr get_hex_byte      ; AAAA low byte of address
-0001DCr 1  85 30          sta IHEX_ADDR_L
-0001DEr 1  20 rr rr       jsr get_hex_byte      ; TT  record type
-0001E1r 1  85 33          sta IHEX_TYPE
-0001E3r 1                 ; data bytes. Only type 00 records are written to memory; any other record
-0001E3r 1                 ; type (e.g. 04 extended linear address) is still read so its checksum is
-0001E3r 1                 ; validated, but the bytes are discarded.
-0001E3r 1  A0 00          ldy #0
-0001E5r 1               @data_loop:
-0001E5r 1  C4 32          cpy IHEX_LEN
-0001E7r 1  F0 0C          beq @read_checksum
-0001E9r 1  20 rr rr       jsr get_hex_byte      ; one data byte (also folds into IHEX_SUM)
-0001ECr 1  A6 33          ldx IHEX_TYPE         ; store only for data records (type 00)
-0001EEr 1  D0 02          bne @skip_store
-0001F0r 1  91 30          sta (IHEX_ADDR),y     ; store at record address + index
-0001F2r 1               @skip_store:
-0001F2r 1  C8             iny
-0001F3r 1  80 F0          bra @data_loop
-0001F5r 1               @read_checksum:
-0001F5r 1  20 rr rr       jsr get_hex_byte      ; CC  record checksum byte
-0001F8r 1                 ; At this point IHEX_SUM = (sum of all record bytes incl checksum) & $FF.
-0001F8r 1                 ; A valid record makes that total zero.
-0001F8r 1  A5 34          lda IHEX_SUM
-0001FAr 1  D0 14          bne @bad_checksum
-0001FCr 1                 ; record good - was it the EOF record?
-0001FCr 1  A5 33          lda IHEX_TYPE
-0001FEr 1  C9 01          cmp #$01
-000200r 1  F0 02          beq @done
-000202r 1  80 C2          bra @next_record
-000204r 1               @done:
-000204r 1  A9 rr          lda #<okMsg
-000206r 1  85 E7          sta PTR_TX
-000208r 1  A9 rr          lda #>okMsg
-00020Ar 1  85 E8          sta PTR_TX_H
-00020Cr 1  20 rr rr       jsr serial_out_str
-00020Fr 1  60             rts
-000210r 1               @bad_checksum:
-000210r 1  A9 rr          lda #<errMsg
-000212r 1  85 E7          sta PTR_TX
-000214r 1  A9 rr          lda #>errMsg
-000216r 1  85 E8          sta PTR_TX_H
-000218r 1  20 rr rr       jsr serial_out_str
-00021Br 1  60             rts
-00021Cr 1               
-00021Cr 1               ; save_ihex:
-00021Cr 1               ; Emit memory as an Intel HEX stream over the serial port.
-00021Cr 1               ; Range comes from WozMon's parsed block syntax: type "START.END" then "S".
-00021Cr 1               ;   XAML/XAMH = start address, L/H = end address (inclusive).
-00021Cr 1               ; Writes 16-byte type 00 data records followed by a type 01 EOF record.
-00021Cr 1               ; Uses IHEX_* zero page scratch. Clobbers A, X, Y.
-00021Cr 1               save_ihex:
-00021Cr 1                 ; WozMon's block-XAM ("START.END") leaves the start address in STL/STH and
-00021Cr 1                 ; the end address in L/H, but it advances XAML/XAMH to the end while dumping.
-00021Cr 1                 ; Re-seed our working pointer (XAML/XAMH) from STL/STH so we start at START.
-00021Cr 1  A5 26          lda STL
-00021Er 1  85 24          sta XAML
-000220r 1  A5 27          lda STH
-000222r 1  85 25          sta XAMH
-000224r 1  20 rr rr       jsr out_crlf
-000227r 1               @line:
-000227r 1                 ; bytes remaining = end - start ; stop once start > end
-000227r 1  A5 25          lda XAMH
-000229r 1  C5 29          cmp H
-00022Br 1  90 0C          bcc @emit_line        ; start high < end high -> more to do
-00022Dr 1  D0 4E          bne @eof              ; start high > end high -> done
-00022Fr 1  A5 24          lda XAML
-000231r 1  C5 28          cmp L
-000233r 1  F0 04          beq @emit_line        ; equal: still one byte to emit this pass
-000235r 1  90 02          bcc @emit_line        ; start low < end low -> more to do
-000237r 1  80 44          bra @eof              ; start > end -> done
-000239r 1               @emit_line:
-000239r 1                 ; decide this record's length: min(16, end-start+1)
-000239r 1                 ; compute remaining low estimate; simplest robust approach: emit up to 16
-000239r 1                 ; bytes but stop at end address inside the loop.
-000239r 1  64 34          stz IHEX_SUM
-00023Br 1  A9 3A          lda #':'
-00023Dr 1  20 rr rr       jsr serial_out
-000240r 1                 ; byte count placeholder handling: we count as we go, so first figure length
-000240r 1  20 rr rr       jsr @calc_len         ; -> IHEX_LEN (1..16)
-000243r 1  A5 32          lda IHEX_LEN
-000245r 1  20 rr rr       jsr put_hex_byte      ; LL
-000248r 1  A5 25          lda XAMH
-00024Ar 1  20 rr rr       jsr put_hex_byte      ; AAAA hi
-00024Dr 1  A5 24          lda XAML
-00024Fr 1  20 rr rr       jsr put_hex_byte      ; AAAA lo
-000252r 1  A9 00          lda #$00
-000254r 1  20 rr rr       jsr put_hex_byte      ; TT = 00 data
-000257r 1  A0 00          ldy #0
-000259r 1               @save_data:
-000259r 1  C4 32          cpy IHEX_LEN
-00025Br 1  F0 08          beq @save_cksum
-00025Dr 1  B1 24          lda (XAML),y
+000153r 1               ; serial_out_str:
+000153r 1               ; Sends the a null terminated string via serial
+000153r 1               ; uses the ZP variable PTR_TX (PTR_TX_L + PTR_TX_H) as the pointer
+000153r 1               ; to the string memory location
+000153r 1               ; - Y register is not preserved
+000153r 1               serial_out_str:
+000153r 1  A0 00          ldy #0
+000155r 1                 @loop:
+000155r 1  B1 E7            lda (PTR_TX),y
+000157r 1  F0 06            beq @null_found
+000159r 1  20 rr rr         jsr serial_out
+00015Cr 1  C8               iny
+00015Dr 1  80 F6            bra @loop
+00015Fr 1                 @null_found:
+00015Fr 1  60             rts
+000160r 1               
+000160r 1               ; # Helper Routines for Serial comms
+000160r 1               
+000160r 1               ; serial_out_hex:
+000160r 1               ; Transmit the value of the A Register as ASCII HEX byte
+000160r 1               ; Need to check this routine, can be optimized
+000160r 1               serial_out_hex:
+000160r 1  48             pha             ; keep the register for further manipulation
+000161r 1  4A             lsr             ; process the high nibble (MSD) shifting it to the low nibble
+000162r 1  4A             lsr
+000163r 1  4A             lsr
+000164r 1  4A             lsr
+000165r 1  29 0F          and #$0F        ; Mask LSD for hex print.
+000167r 1  09 30          ora #$30        ; this is like adding $30 > ASCII numbers start at $30 the OR %00110000 sets the high bits shifting the hex value to the right place.
+000169r 1  C9 3A          cmp #$3A        ; is less than '9' $39
+00016Br 1  90 02          bcc @done       ; A is < 9 ($3A) so we already have the ASCII of the number
+00016Dr 1  69 06          adc #$06        ; A is > 9 ($3A) so add 6 + carry (carry is set by CMP) to offset for letters (A $41 - F $46)
+00016Fr 1               @done:
+00016Fr 1  20 rr rr       jsr serial_out  ; send the MSD since its ready
+000172r 1  68             pla             ; get the original value back
+000173r 1  29 0F          and #$0F        ; process the low nibble (LSD)
+000175r 1  09 30          ora #$30
+000177r 1  C9 3A          cmp #$3A
+000179r 1  90 02          bcc @done2
+00017Br 1  69 06          adc #$06
+00017Dr 1               @done2:
+00017Dr 1  20 rr rr       jsr serial_out
+000180r 1  60             rts
+000181r 1               
+000181r 1               ; out_crlf
+000181r 1               ; Transmit a CR+LF > $0D,$0A
+000181r 1               ; Preserves all registers
+000181r 1               out_crlf:
+000181r 1  48             pha
+000182r 1  A9 0D          lda #CR
+000184r 1  20 rr rr       jsr serial_out
+000187r 1  A9 0A          lda #LF
+000189r 1  20 rr rr       jsr serial_out
+00018Cr 1  68             pla
+00018Dr 1  60             rts
+00018Er 1               
+00018Er 1               ; ### Monitor Helper Routines ###
+00018Er 1               
+00018Er 1               ; ### Command Dispatch ###
+00018Er 1               ; This enables adding commands to WozMon preventing the core code to grow in size
+00018Er 1               ;
+00018Er 1               ; cmd_dispatch:
+00018Er 1               ; Called from WozMon's command parser with the current input char in A.
+00018Er 1               ; Decodes the single-letter commands R (run), L (load Intel HEX) and
+00018Er 1               ; S (save Intel HEX). If the char is none of these, returns with A and X
+00018Er 1               ; unchanged so WozMon can continue its normal hex parse.
+00018Er 1               ; For R/L/S the command is executed and control returns to WozMon
+00018Er 1               ; (WARMWOZ) rather than back to the caller.
+00018Er 1               ; - On no match: A and X preserved, RTS
+00018Er 1               cmd_dispatch:
+00018Er 1  C9 52          cmp #'R'          ; run program at XAM address?
+000190r 1  F0 09          beq @run
+000192r 1  C9 4C          cmp #'L'          ; load Intel HEX?
+000194r 1  F0 0E          beq @load
+000196r 1  C9 53          cmp #'S'          ; save Intel HEX?
+000198r 1  F0 10          beq @save
+00019Ar 1  60             rts               ; not a command, back to WozMon hex parse (A,X intact)
+00019Br 1               @run:
+00019Br 1  20 rr rr       jsr @run_sub      ; JSR so an RTS from the user program returns here
+00019Er 1  4C rr rr       jmp WARMWOZ       ; then warm-start the monitor
+0001A1r 1               @run_sub:
+0001A1r 1  6C 24 00       jmp (XAML)        ; run at the last XAM address
+0001A4r 1               @load:
+0001A4r 1  20 rr rr       jsr load_ihex
+0001A7r 1  4C rr rr       jmp WARMWOZ
+0001AAr 1               @save:
+0001AAr 1  20 rr rr       jsr save_ihex
+0001ADr 1  4C rr rr       jmp WARMWOZ
+0001B0r 1               
+0001B0r 1               ; ### Intel HEX Load/Save ###
+0001B0r 1               
+0001B0r 1               ; load_ihex:
+0001B0r 1               ; Receive an Intel HEX stream from the serial port and store it in memory.
+0001B0r 1               ; Each data record (type 00) is written at the 16-bit address carried in the
+0001B0r 1               ; record itself, so no manual deposit address is needed. A record checksum is
+0001B0r 1               ; verified; on mismatch the load aborts with an error message. An EOF record
+0001B0r 1               ; (type 01) ends the load with "OK".
+0001B0r 1               ; Record: ':' LL AAAA TT <data...> CC   (all hex ASCII)
+0001B0r 1               ; Uses IHEX_* zero page scratch. Overwrites A, X, Y.
+0001B0r 1               load_ihex:
+0001B0r 1                 ; prompt
+0001B0r 1  A9 rr          lda #<loadMsg
+0001B2r 1  85 E7          sta PTR_TX
+0001B4r 1  A9 rr          lda #>loadMsg
+0001B6r 1  85 E8          sta PTR_TX_H
+0001B8r 1  20 rr rr       jsr serial_out_str
+0001BBr 1               @next_record:
+0001BBr 1  20 rr rr       jsr serial_in_raw     ; wait for start-of-record
+0001BEr 1  C9 3A          cmp #':'
+0001C0r 1  D0 F9          bne @next_record      ; ignore anything until a ':' (CR/LF between records)
+0001C2r 1  64 34          stz IHEX_SUM          ; reset running checksum (65C02 stz)
+0001C4r 1  20 rr rr       jsr get_hex_byte      ; LL  byte count
+0001C7r 1  85 32          sta IHEX_LEN
+0001C9r 1  20 rr rr       jsr get_hex_byte      ; AAAA high byte of address
+0001CCr 1  85 31          sta IHEX_ADDR_H
+0001CEr 1  20 rr rr       jsr get_hex_byte      ; AAAA low byte of address
+0001D1r 1  85 30          sta IHEX_ADDR_L
+0001D3r 1  20 rr rr       jsr get_hex_byte      ; TT  record type
+0001D6r 1  85 33          sta IHEX_TYPE
+0001D8r 1                 ; data bytes. Only type 00 records are written to memory; any other record
+0001D8r 1                 ; type (e.g. 04 extended linear address) is still read so its checksum is
+0001D8r 1                 ; validated, but the bytes are discarded.
+0001D8r 1  A0 00          ldy #0
+0001DAr 1               @data_loop:
+0001DAr 1  C4 32          cpy IHEX_LEN
+0001DCr 1  F0 0C          beq @read_checksum
+0001DEr 1  20 rr rr       jsr get_hex_byte      ; one data byte (also folds into IHEX_SUM)
+0001E1r 1  A6 33          ldx IHEX_TYPE         ; store only for data records (type 00)
+0001E3r 1  D0 02          bne @skip_store
+0001E5r 1  91 30          sta (IHEX_ADDR),y     ; store at record address + index
+0001E7r 1               @skip_store:
+0001E7r 1  C8             iny
+0001E8r 1  80 F0          bra @data_loop
+0001EAr 1               @read_checksum:
+0001EAr 1  20 rr rr       jsr get_hex_byte      ; CC  record checksum byte
+0001EDr 1                 ; At this point IHEX_SUM = (sum of all record bytes incl checksum) & $FF.
+0001EDr 1                 ; A valid record makes that total zero.
+0001EDr 1  A5 34          lda IHEX_SUM
+0001EFr 1  D0 14          bne @bad_checksum
+0001F1r 1                 ; record good - was it the EOF record?
+0001F1r 1  A5 33          lda IHEX_TYPE
+0001F3r 1  C9 01          cmp #$01
+0001F5r 1  F0 02          beq @done
+0001F7r 1  80 C2          bra @next_record
+0001F9r 1               @done:
+0001F9r 1  A9 rr          lda #<okMsg
+0001FBr 1  85 E7          sta PTR_TX
+0001FDr 1  A9 rr          lda #>okMsg
+0001FFr 1  85 E8          sta PTR_TX_H
+000201r 1  20 rr rr       jsr serial_out_str
+000204r 1  60             rts
+000205r 1               @bad_checksum:
+000205r 1  A9 rr          lda #<errMsg
+000207r 1  85 E7          sta PTR_TX
+000209r 1  A9 rr          lda #>errMsg
+00020Br 1  85 E8          sta PTR_TX_H
+00020Dr 1  20 rr rr       jsr serial_out_str
+000210r 1  60             rts
+000211r 1               
+000211r 1               ; save_ihex:
+000211r 1               ; Emit memory as an Intel HEX stream over the serial port.
+000211r 1               ; Range comes from WozMon's parsed block syntax: type "START.END" then "S".
+000211r 1               ;   XAML/XAMH = start address, L/H = end address (inclusive).
+000211r 1               ; Writes 16-byte type 00 data records followed by a type 01 EOF record.
+000211r 1               ; Uses IHEX_* zero page scratch. Overwrites A, X, Y.
+000211r 1               save_ihex:
+000211r 1                 ; WozMon's block-XAM ("START.END") leaves the start address in STL/STH and
+000211r 1                 ; the end address in L/H, but it advances XAML/XAMH to the end while dumping.
+000211r 1                 ; Re-seed our working pointer (XAML/XAMH) from STL/STH so we start at START.
+000211r 1  A5 26          lda STL
+000213r 1  85 24          sta XAML
+000215r 1  A5 27          lda STH
+000217r 1  85 25          sta XAMH
+000219r 1  20 rr rr       jsr out_crlf
+00021Cr 1               @line:
+00021Cr 1                 ; bytes remaining = end - start ; stop once start > end
+00021Cr 1  A5 25          lda XAMH
+00021Er 1  C5 29          cmp H
+000220r 1  90 0C          bcc @emit_line        ; start high < end high -> more to do
+000222r 1  D0 4E          bne @eof              ; start high > end high -> done
+000224r 1  A5 24          lda XAML
+000226r 1  C5 28          cmp L
+000228r 1  F0 04          beq @emit_line        ; equal: still one byte to emit this pass
+00022Ar 1  90 02          bcc @emit_line        ; start low < end low -> more to do
+00022Cr 1  80 44          bra @eof              ; start > end -> done
+00022Er 1               @emit_line:
+00022Er 1                 ; decide this record's length: min(16, end-start+1)
+00022Er 1                 ; compute remaining low estimate; simplest robust approach: emit up to 16
+00022Er 1                 ; bytes but stop at end address inside the loop.
+00022Er 1  64 34          stz IHEX_SUM
+000230r 1  A9 3A          lda #':'
+000232r 1  20 rr rr       jsr serial_out
+000235r 1                 ; byte count placeholder handling: we count as we go, so first figure length
+000235r 1  20 rr rr       jsr @calc_len         ; -> IHEX_LEN (1..16)
+000238r 1  A5 32          lda IHEX_LEN
+00023Ar 1  20 rr rr       jsr put_hex_byte      ; LL
+00023Dr 1  A5 25          lda XAMH
+00023Fr 1  20 rr rr       jsr put_hex_byte      ; AAAA hi
+000242r 1  A5 24          lda XAML
+000244r 1  20 rr rr       jsr put_hex_byte      ; AAAA lo
+000247r 1  A9 00          lda #$00
+000249r 1  20 rr rr       jsr put_hex_byte      ; TT = 00 data
+00024Cr 1  A0 00          ldy #0
+00024Er 1               @save_data:
+00024Er 1  C4 32          cpy IHEX_LEN
+000250r 1  F0 08          beq @save_cksum
+000252r 1  B1 24          lda (XAML),y
+000254r 1  20 rr rr       jsr put_hex_byte
+000257r 1  C8             iny
+000258r 1  80 F4          bra @save_data
+00025Ar 1               @save_cksum:
+00025Ar 1                 ; checksum = two's complement of sum so far
+00025Ar 1  A5 34          lda IHEX_SUM
+00025Cr 1  49 FF          eor #$FF
+00025Er 1  1A             inc
 00025Fr 1  20 rr rr       jsr put_hex_byte
-000262r 1  C8             iny
-000263r 1  80 F4          bra @save_data
-000265r 1               @save_cksum:
-000265r 1                 ; checksum = two's complement of sum so far
-000265r 1  A5 34          lda IHEX_SUM
-000267r 1  49 FF          eor #$FF
-000269r 1  1A             inc
-00026Ar 1  20 rr rr       jsr put_hex_byte
-00026Dr 1  20 rr rr       jsr out_crlf
-000270r 1                 ; advance start by IHEX_LEN
-000270r 1  A5 24          lda XAML
-000272r 1  18             clc
-000273r 1  65 32          adc IHEX_LEN
-000275r 1  85 24          sta XAML
-000277r 1  90 AE          bcc @line
-000279r 1  E6 25          inc XAMH
-00027Br 1  80 AA          bra @line
-00027Dr 1               @eof:
-00027Dr 1                 ; EOF record :00000001FF
-00027Dr 1  A9 rr          lda #<eofRec
-00027Fr 1  85 E7          sta PTR_TX
-000281r 1  A9 rr          lda #>eofRec
-000283r 1  85 E8          sta PTR_TX_H
-000285r 1  20 rr rr       jsr serial_out_str
-000288r 1  60             rts
-000289r 1               ; @calc_len: how many bytes to emit this record (1..16), bounded by end addr
-000289r 1               @calc_len:
-000289r 1                 ; remaining = end - start (16-bit). If remaining+1 >= 16 use 16 else remaining+1
-000289r 1                 ; compute end - start
-000289r 1  A5 28          lda L
-00028Br 1  38             sec
-00028Cr 1  E5 24          sbc XAML
-00028Er 1  85 35          sta IHEX_TMP          ; low of (end-start)
-000290r 1  A5 29          lda H
-000292r 1  E5 25          sbc XAMH              ; high of (end-start)
-000294r 1  D0 06          bne @full             ; high byte nonzero -> at least 256 left, use 16
-000296r 1  A5 35          lda IHEX_TMP
-000298r 1  C9 0F          cmp #15               ; remaining low >= 15 ? (remaining+1 >= 16)
-00029Ar 1  90 05          bcc @partial
-00029Cr 1               @full:
-00029Cr 1  A9 10          lda #16
-00029Er 1  85 32          sta IHEX_LEN
-0002A0r 1  60             rts
-0002A1r 1               @partial:
-0002A1r 1  A5 35          lda IHEX_TMP          ; remaining (end-start), bytes left-1
-0002A3r 1  1A             inc                   ; +1 to make it inclusive count
-0002A4r 1  85 32          sta IHEX_LEN
-0002A6r 1  60             rts
-0002A7r 1               
-0002A7r 1               ; get_hex_byte:
-0002A7r 1               ; Read two ASCII hex characters from serial (raw, no echo) and return the
-0002A7r 1               ; assembled byte in A. The byte is also added into IHEX_SUM for checksum
-0002A7r 1               ; verification. Clobbers A; preserves X, Y.
-0002A7r 1               get_hex_byte:
-0002A7r 1  DA             phx
-0002A8r 1  20 rr rr       jsr serial_in_raw     ; high nibble char
-0002ABr 1  20 rr rr       jsr ascii_to_nib
-0002AEr 1  0A             asl
-0002AFr 1  0A             asl
-0002B0r 1  0A             asl
-0002B1r 1  0A             asl
-0002B2r 1  85 35          sta IHEX_TMP          ; high nibble in place
-0002B4r 1  20 rr rr       jsr serial_in_raw     ; low nibble char
-0002B7r 1  20 rr rr       jsr ascii_to_nib
-0002BAr 1  05 35          ora IHEX_TMP          ; combine nibbles
-0002BCr 1  AA             tax                   ; keep byte in X
-0002BDr 1  18             clc
-0002BEr 1  65 34          adc IHEX_SUM          ; fold into running checksum
-0002C0r 1  85 34          sta IHEX_SUM
-0002C2r 1  8A             txa                   ; return byte in A
-0002C3r 1  FA             plx
+000262r 1  20 rr rr       jsr out_crlf
+000265r 1                 ; advance start by IHEX_LEN
+000265r 1  A5 24          lda XAML
+000267r 1  18             clc
+000268r 1  65 32          adc IHEX_LEN
+00026Ar 1  85 24          sta XAML
+00026Cr 1  90 AE          bcc @line
+00026Er 1  E6 25          inc XAMH
+000270r 1  80 AA          bra @line
+000272r 1               @eof:
+000272r 1                 ; EOF record :00000001FF
+000272r 1  A9 rr          lda #<eofRec
+000274r 1  85 E7          sta PTR_TX
+000276r 1  A9 rr          lda #>eofRec
+000278r 1  85 E8          sta PTR_TX_H
+00027Ar 1  20 rr rr       jsr serial_out_str
+00027Dr 1  60             rts
+00027Er 1               ; @calc_len: how many bytes to emit this record (1..16), bounded by end addr
+00027Er 1               @calc_len:
+00027Er 1                 ; remaining = end - start (16-bit). If remaining+1 >= 16 use 16 else remaining+1
+00027Er 1                 ; compute end - start
+00027Er 1  A5 28          lda L
+000280r 1  38             sec
+000281r 1  E5 24          sbc XAML
+000283r 1  85 35          sta IHEX_TMP          ; low of (end-start)
+000285r 1  A5 29          lda H
+000287r 1  E5 25          sbc XAMH              ; high of (end-start)
+000289r 1  D0 06          bne @full             ; high byte nonzero -> at least 256 left, use 16
+00028Br 1  A5 35          lda IHEX_TMP
+00028Dr 1  C9 0F          cmp #15               ; remaining low >= 15 ? (remaining+1 >= 16)
+00028Fr 1  90 05          bcc @partial
+000291r 1               @full:
+000291r 1  A9 10          lda #16
+000293r 1  85 32          sta IHEX_LEN
+000295r 1  60             rts
+000296r 1               @partial:
+000296r 1  A5 35          lda IHEX_TMP          ; remaining (end-start), bytes left-1
+000298r 1  1A             inc                   ; +1 to make it inclusive count
+000299r 1  85 32          sta IHEX_LEN
+00029Br 1  60             rts
+00029Cr 1               
+00029Cr 1               ; ### Hex & ASCII Helpers ###
+00029Cr 1               
+00029Cr 1               ; get_hex_byte:
+00029Cr 1               ; Read two ASCII hex characters from serial (raw, no echo) and return the
+00029Cr 1               ; assembled byte in A. The byte is also added into IHEX_SUM for checksum
+00029Cr 1               ; verification. Overwrites A; preserves X, Y.
+00029Cr 1               get_hex_byte:
+00029Cr 1  DA             phx
+00029Dr 1  20 rr rr       jsr serial_in_raw     ; high nibble char
+0002A0r 1  20 rr rr       jsr ascii_to_nib
+0002A3r 1  0A             asl
+0002A4r 1  0A             asl
+0002A5r 1  0A             asl
+0002A6r 1  0A             asl
+0002A7r 1  85 35          sta IHEX_TMP          ; high nibble in place
+0002A9r 1  20 rr rr       jsr serial_in_raw     ; low nibble char
+0002ACr 1  20 rr rr       jsr ascii_to_nib
+0002AFr 1  05 35          ora IHEX_TMP          ; combine nibbles
+0002B1r 1  AA             tax                   ; keep byte in X
+0002B2r 1  18             clc
+0002B3r 1  65 34          adc IHEX_SUM          ; fold into running checksum
+0002B5r 1  85 34          sta IHEX_SUM
+0002B7r 1  8A             txa                   ; return byte in A
+0002B8r 1  FA             plx
+0002B9r 1  60             rts
+0002BAr 1               
+0002BAr 1               ; ascii_to_nib:
+0002BAr 1               ; Convert ASCII hex char in A ('0'-'9','A'-'F','a'-'f') to nibble value 0-15.
+0002BAr 1               ; No validation - assumes well-formed input. Overwrites A.
+0002BAr 1               ascii_to_nib:
+0002BAr 1  C9 3A          cmp #'9'+1
+0002BCr 1  90 04          bcc @digit            ; '0'-'9'
+0002BEr 1  29 DF          and #$DF              ; fold lower to upper case
+0002C0r 1  E9 07          sbc #$07              ; 'A'(after carry) maps to 10 ; carry set from cmp path
+0002C2r 1               @digit:
+0002C2r 1  29 0F          and #$0F
 0002C4r 1  60             rts
 0002C5r 1               
-0002C5r 1               ; ascii_to_nib:
-0002C5r 1               ; Convert ASCII hex char in A ('0'-'9','A'-'F','a'-'f') to nibble value 0-15.
-0002C5r 1               ; No validation - assumes well-formed input. Clobbers A.
-0002C5r 1               ascii_to_nib:
-0002C5r 1  C9 3A          cmp #'9'+1
-0002C7r 1  90 04          bcc @digit            ; '0'-'9'
-0002C9r 1  29 DF          and #$DF              ; fold lower to upper case
-0002CBr 1  E9 07          sbc #$07              ; 'A'(after carry) maps to 10 ; carry set from cmp path
-0002CDr 1               @digit:
-0002CDr 1  29 0F          and #$0F
+0002C5r 1               ; put_hex_byte:
+0002C5r 1               ; Transmit the byte in A as two ASCII hex chars and fold it into IHEX_SUM.
+0002C5r 1               ; Overwrites A; preserves X, Y.
+0002C5r 1               put_hex_byte:
+0002C5r 1  48             pha
+0002C6r 1  18             clc
+0002C7r 1  65 34          adc IHEX_SUM          ; checksum tracks raw byte value
+0002C9r 1  85 34          sta IHEX_SUM
+0002CBr 1  68             pla
+0002CCr 1  20 rr rr       jsr serial_out_hex    ; reuse BIOS hex printer
 0002CFr 1  60             rts
 0002D0r 1               
-0002D0r 1               ; put_hex_byte:
-0002D0r 1               ; Transmit the byte in A as two ASCII hex chars and fold it into IHEX_SUM.
-0002D0r 1               ; Clobbers A; preserves X, Y.
-0002D0r 1               put_hex_byte:
-0002D0r 1  48             pha
-0002D1r 1  18             clc
-0002D2r 1  65 34          adc IHEX_SUM          ; checksum tracks raw byte value
-0002D4r 1  85 34          sta IHEX_SUM
-0002D6r 1  68             pla
-0002D7r 1  20 rr rr       jsr serial_out_hex    ; reuse BIOS hex printer
-0002DAr 1  60             rts
-0002DBr 1               
-0002DBr 1               ; ### LOAD / SAVE for BASIC (stubs) ###
-0002DBr 1               
-0002DBr 1               ; bios_load, bios_save:
-0002DBr 1               ; The BASIC LOAD and SAVE statements call these through the jump table
-0002DBr 1               ; (BIOS_LOAD, BIOS_SAVE). They are STUBS for now: they return without doing
-0002DBr 1               ; anything. They are meant for the SD card routines. What they take (file name
-0002DBr 1               ; and so on) is not defined yet, it will be documented here when they are written.
-0002DBr 1               ; They are not the monitor's L and S commands (load_ihex and save_ihex).
-0002DBr 1               bios_load:
-0002DBr 1  60             rts
-0002DCr 1               bios_save:
-0002DCr 1  60             rts
-0002DDr 1               
-0002DDr 1               ; ROM Data
-0002DDr 1               ; Startup Messages
-0002DDr 1               startupMessage:
-0002DDr 1  0C 0D 0A 23    .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
-0002E1r 1  23 20 53 69  
-0002E5r 1  6D 70 6C 65  
-0002F6r 1  30 2E 38 2E    .byte VERSION
-0002FAr 1  30           
-0002FBr 1  0D 0A 4F 4B    .byte	$0D,$0A,"OK"
-0002FFr 1  0D 0A 00       .byte $0D,$0A,$00
-000302r 1               wozmonMessage:
-000302r 1  0D 0A 3E 20    .byte	CR,LF,"> WozMon <"
-000306r 1  57 6F 7A 4D  
-00030Ar 1  6F 6E 20 3C  
-00030Er 1  0D 0A 00       .byte CR,LF,$00
-000311r 1               viaMessage:
-000311r 1  23 23 20 56    .byte "## VIA1 on $7F20"
-000315r 1  49 41 31 20  
-000319r 1  6F 6E 20 24  
-000321r 1  0D 0A 00       .byte CR,LF,$00
-000324r 1               ; Intel HEX loader/saver messages
-000324r 1               loadMsg:
-000324r 1  0D 0A 50 61    .byte CR,LF,"Paste Intel HEX..",CR,LF,$00
-000328r 1  73 74 65 20  
-00032Cr 1  49 6E 74 65  
-00033Ar 1               okMsg:
-00033Ar 1  0D 0A 4F 4B    .byte CR,LF,"OK",CR,LF,$00
-00033Er 1  0D 0A 00     
-000341r 1               errMsg:
-000341r 1  0D 0A 43 4B    .byte CR,LF,"CKSUM ERR",CR,LF,$00
-000345r 1  53 55 4D 20  
-000349r 1  45 52 52 0D  
-00034Fr 1               eofRec:
-00034Fr 1  3A 30 30 30    .byte ":00000001FF",CR,LF,$00
-000353r 1  30 30 30 30  
-000357r 1  31 46 46 0D  
-00035Dr 1               
-00035Dr 1               ; ### Interrupt Handlers ###
-00035Dr 1               
-00035Dr 1               ; # IRQ Handler
-00035Dr 1               ; Services VIA1 Timer 1 (the ~10ms tick) by incrementing the 3-byte TOCKS
-00035Dr 1               ; jiffy counter. Only A is used, so only A is preserved. Other sources (ACIA
-00035Dr 1               ; RX, etc.) can be added here later; unrecognised IRQs simply return.
-00035Dr 1               irq_handler:
-00035Dr 1  48               pha                   ; preserve A (X,Y untouched below)
-00035Er 1                   ; Was it VIA1 Timer 1? Check IFR bit 6. (If the VIA is absent this reads
-00035Er 1                   ; open bus, but then it is not an IRQ source so the board won't assert IRQ.)
-00035Er 1  AD 2D 7F         lda VIA1_IFR
-000361r 1  29 40            and #VIA_IFR_T1
-000363r 1  F0 0D            beq @not_t1           ; not Timer 1 -> nothing we handle
-000365r 1                   ; Clear the Timer 1 interrupt flag by reading T1C-L.
-000365r 1  AD 24 7F         lda VIA1_T1CL
-000368r 1                   ; Increment the 24-bit TOCKS counter (little-endian).
-000368r 1  E6 E0            inc TOCKS_L
-00036Ar 1  D0 06            bne @done
-00036Cr 1  E6 E1            inc TOCKS_M
-00036Er 1  D0 02            bne @done
-000370r 1  E6 E2            inc TOCKS_H
-000372r 1               @done:
-000372r 1               @not_t1:
-000372r 1  68               pla                   ; restore A
-000373r 1  40               rti       ; 40
-000374r 1               
-000374r 1               ; # NMI Handler Vector
-000374r 1               nmi_handler:
-000374r 1  EA               nop       ; EA
-000375r 1  40               rti       ; 40
-000376r 1               
-000376r 1               ; -- MONITOR --
-000376r 1               ; .org $FF00
-000376r 1               ; ## WozMon ##
-000376r 1               .segment "WOZMON"
-000000r 1               .include "wozmon_sbc.s"
-000000r 2               ;  The WOZ Monitor for the Apple 1
-000000r 2               ;  Written by Steve Wozniak in 1976
-000000r 2               ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
-000000r 2               ;
-000000r 2               ; Changelog:
-000000r 2               ; - 5 bytes less
-000000r 2               ; - updated to use BIOS ruitines for Serial int and some I/O
-000000r 2               ; - moved Variables to defines_[platfrom].s
-000000r 2               ; - updates to use standard ASCII (not Apple 1 bit 7 set)
-000000r 2               ; - input now case insensitive
-000000r 2               ; -
-000000r 2               
-000000r 2               ; TEST PROGRAM
-000000r 2               ; 0400: A9 20 20 77 80 18 69 01 C9 7F 30 F6 4C 00 04
-000000r 2               ;
-000000r 2               ;                            * = $0400
-000000r 2               ; 0400   A9 20      L0400     LDA #$20
-000000r 2               ; 0402   20 77 80   L0402     JSR $8077
-000000r 2               ; 0405   18                   CLC
-000000r 2               ; 0406   69 01                ADC #$01
-000000r 2               ; 0408   C9 7F                CMP #$7F
-000000r 2               ; 040A   30 F6                BMI L0402
-000000r 2               ; 040C   4C 00 04             JMP L0400
-000000r 2               ;                             .END
-000000r 2               ; Page 0 Variables (XAML..MODE) are declared in zeropage.s so that
-000000r 2               ; the BIOS Intel HEX routines can share them as zero page.
-000000r 2               
-000000r 2               ; Other Variables
-000000r 2               
-000000r 2               IN              = $0200         ;  Input buffer to $027F
-000000r 2               
+0002D0r 1               ; ### LOAD / SAVE for BASIC  ###
+0002D0r 1               
+0002D0r 1               ; bios_load, bios_save: (stubs)
+0002D0r 1               ; The BASIC LOAD and SAVE statements call these through the jump table
+0002D0r 1               ; (BIOS_LOAD, BIOS_SAVE). They are STUBS for now: they return without doing
+0002D0r 1               ; anything. They are meant for the SD card routines. What they take (file name
+0002D0r 1               ; and so on) is not defined yet, it will be documented here when they are written.
+0002D0r 1               ; They are not the monitor's L and S commands (load_ihex and save_ihex).
+0002D0r 1               bios_load:
+0002D0r 1  60             rts
+0002D1r 1               bios_save:
+0002D1r 1  60             rts
+0002D2r 1               
+0002D2r 1               
+0002D2r 1               ; ### ROM Data ###
+0002D2r 1               
+0002D2r 1               ; Startup Messages
+0002D2r 1               startupMessage:
+0002D2r 1  0C 0D 0A 23    .byte	$0C,CR,LF,"## Simple6502 ##",CR,LF,"BIOS v"
+0002D6r 1  23 20 53 69  
+0002DAr 1  6D 70 6C 65  
+0002EDr 1  30 2E 38 2E    .byte VERSION
+0002F1r 1  30           
+0002F2r 1                 ;.byte	$0D,$0A,"OK"
+0002F2r 1  0D 0A          .byte CR,LF
+0002F4r 1  00             .byte $00
+0002F5r 1               wozmonMessage:
+0002F5r 1  0D 0A 3E 20    .byte	CR,LF,"> WozMon <"
+0002F9r 1  57 6F 7A 4D  
+0002FDr 1  6F 6E 20 3C  
+000301r 1  0D 0A 00       .byte CR,LF,$00
+000304r 1               viaMessage:
+000304r 1  23 23 20 56    .byte "## VIA1 on $7F20"
+000308r 1  49 41 31 20  
+00030Cr 1  6F 6E 20 24  
+000314r 1  0D 0A 00       .byte CR,LF,$00
+000317r 1               ; Intel HEX loader/saver messages
+000317r 1               loadMsg:
+000317r 1  0D 0A 50 61    .byte CR,LF,"Paste Intel HEX..",CR,LF,$00
+00031Br 1  73 74 65 20  
+00031Fr 1  49 6E 74 65  
+00032Dr 1               okMsg:
+00032Dr 1  0D 0A 4F 4B    .byte CR,LF,"OK",CR,LF,$00
+000331r 1  0D 0A 00     
+000334r 1               errMsg:
+000334r 1  0D 0A 43 4B    .byte CR,LF,"CKSUM ERR",CR,LF,$00
+000338r 1  53 55 4D 20  
+00033Cr 1  45 52 52 0D  
+000342r 1               eofRec:
+000342r 1  3A 30 30 30    .byte ":00000001FF",CR,LF,$00
+000346r 1  30 30 30 30  
+00034Ar 1  31 46 46 0D  
+000350r 1               
+000350r 1               ; ### Interrupt Handlers ###
+000350r 1               
+000350r 1               ; # IRQ Handler
+000350r 1               ; Services VIA1 Timer 1 (the ~10ms tick) by incrementing the 3-byte TOCKS
+000350r 1               ; jiffy counter. Only A is used, so only A is preserved. Other sources (ACIA
+000350r 1               ; RX, etc.) can be added here later; unrecognised IRQs simply return.
+000350r 1               irq_handler:
+000350r 1  48               pha                   ; preserve A (X,Y untouched below)
+000351r 1                   ; Was it VIA1 Timer 1? Check IFR bit 6. (If the VIA is absent this reads
+000351r 1                   ; open bus, but then it is not an IRQ source so the board won't assert IRQ.)
+000351r 1  AD 2D 7F         lda VIA1_IFR
+000354r 1  29 40            and #VIA_IFR_T1
+000356r 1  F0 0D            beq @not_t1           ; not Timer 1 -> nothing we handle
+000358r 1                   ; Clear the Timer 1 interrupt flag by reading T1C-L.
+000358r 1  AD 24 7F         lda VIA1_T1CL
+00035Br 1                   ; Increment the 24-bit TOCKS counter (little-endian).
+00035Br 1  E6 E0            inc TOCKS_L
+00035Dr 1  D0 06            bne @done
+00035Fr 1  E6 E1            inc TOCKS_M
+000361r 1  D0 02            bne @done
+000363r 1  E6 E2            inc TOCKS_H
+000365r 1               @done:
+000365r 1               @not_t1:
+000365r 1  68               pla         ; restore A
+000366r 1  40               rti         ; 40
+000367r 1               
+000367r 1               ; # NMI Handler Vector
+000367r 1               nmi_handler:
+000367r 1  EA               nop       ; EA
+000368r 1  40               rti       ; 40
+000369r 1               
+000369r 1               ; -- MONITOR --
+000369r 1               ; ## WozMon ##
+000369r 1               
+000369r 1               WOZMON_COLD:    ; Need to move this to a WozMon COLD_Start of sorts
+000369r 1               ; Print woz message
+000369r 1  A9 rr        lda #<wozmonMessage
+00036Br 1  85 E7        sta PTR_TX
+00036Dr 1  A9 rr        lda #>wozmonMessage
+00036Fr 1  85 E8        sta PTR_TX_H
+000371r 1  20 rr rr     jsr serial_out_str
+000374r 1  4C rr rr     jmp WOZMON      ; go to the monitor (without this it runs into the empty ROM after the BIOS)
+000377r 1               ; .segment "WOZMON"   ; .org $FF00
+000377r 1               .include "wozmon_sbc.s"
+000377r 2               ;  The WOZ Monitor for the Apple 1
+000377r 2               ;  Written by Steve Wozniak in 1976
+000377r 2               ;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
+000377r 2               ;
+000377r 2               ; Changelog:
+000377r 2               ; - 5 bytes less
+000377r 2               ; - updated to use BIOS ruitines for Serial int and some I/O
+000377r 2               ; - moved Variables to defines_[platfrom].s
+000377r 2               ; - updates to use standard ASCII (not Apple 1 bit 7 set)
+000377r 2               ; - input now case insensitive
+000377r 2               ; -
+000377r 2               
+000377r 2               ; TEST PROGRAM
+000377r 2               ; 0400: A9 20 20 77 80 18 69 01 C9 7F 30 F6 4C 00 04
+000377r 2               ;
+000377r 2               ;                            * = $0400
+000377r 2               ; 0400   A9 20      L0400     LDA #$20
+000377r 2               ; 0402   20 77 80   L0402     JSR $8077
+000377r 2               ; 0405   18                   CLC
+000377r 2               ; 0406   69 01                ADC #$01
+000377r 2               ; 0408   C9 7F                CMP #$7F
+000377r 2               ; 040A   30 F6                BMI L0402
+000377r 2               ; 040C   4C 00 04             JMP L0400
+000377r 2               ;                             .END
+000377r 2               ; Page 0 Variables (XAML..MODE) are declared in zeropage.s so that
+000377r 2               ; the BIOS Intel HEX routines can share them as zero page.
+000377r 2               
+000377r 2               ; Other Variables
+000377r 2               
+000377r 2               IN              = $0200         ;  Input buffer is 128 bytes, $0200–$027F,
+000377r 2               
+000377r 2               .segment "WOZMON"
 000000r 2               WOZMON:
 000000r 2                               ; Run out of mem so assuming serial is inizialized by BIOS
 000000r 2                               ; with only one of this JSRs 'WOZMON' overflows the

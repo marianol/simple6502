@@ -27,8 +27,9 @@
 
 ; Other Variables
 
-IN              = $0200         ;  Input buffer to $027F
+IN              = $0200         ;  Input buffer is 128 bytes, $0200–$027F,
 
+.segment "WOZMON"  
 WOZMON:
                 ; Run out of mem so assuming serial is inizialized by BIOS
                 ; with only one of this JSRs 'WOZMON' overflows the

@@ -84,14 +84,8 @@ reset:
   jsr serial_out_str
   ; If VIA1 was detected, announce it under the banner: "## VIA1 on $7F20"
   jsr via_report
- ; Print woz message
-  lda #<wozmonMessage
-  sta PTR_TX
-  lda #>wozmonMessage
-  sta PTR_TX_H
-  jsr serial_out_str
   cli               ; enable IRQs now that handlers/VIA are set up
-  jmp WOZMON        ; go to the monitor
+  jmp WOZMON_COLD   ; go to the monitor
 
 
 
@@ -180,20 +174,6 @@ post:
   nop
   rts
 
-; ### Serial Routines ###
-; Initializes the on board serial interface 
-; Reset and set config for the ACIA. Init the RX buffer pointer
-init_serial:
-  lda #ACIA_RESET
-  sta ACIA_CONTROL
-  lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
-  sta ACIA_CONTROL
-  ; Init the RX buffer pointers
-  lda #0
-  sta PTR_RD_RX_BUF
-  sta PTR_WR_RX_BUF
-  rts
-
 ; ### VIA Routines ###
 
 ; via_init:
@@ -208,7 +188,7 @@ init_serial:
 ;
 ; Sets VIA_PRESENT (and returns carry set) if the VIA responded; clears both
 ; otherwise. Leaves IRQs enabled on the VIA only when present.
-; Clobbers A, X.
+; Overwrites A, X.
 via_init:
   stz VIA_PRESENT       ; assume absent until proven
   ; --- presence check on DDRB ---
@@ -256,7 +236,7 @@ via_init:
 ; via_report:
 ; If VIA1 was detected, print a line under the BIOS banner:
 ;   ## VIA1 on $7F20
-; Does nothing if the VIA is absent. Clobbers A, Y.
+; Does nothing if the VIA is absent. Overwrites A, Y.
 via_report:
   lda VIA_PRESENT
   beq @done
@@ -267,6 +247,22 @@ via_report:
   jsr serial_out_str
 @done:
   rts
+
+
+; ### Serial Routines ###
+; Initializes the on board serial interface 
+; Reset and set config for the ACIA. Init the RX buffer pointer
+init_serial:
+  lda #ACIA_RESET
+  sta ACIA_CONTROL
+  lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
+  sta ACIA_CONTROL
+  ; Init the RX buffer pointers
+  lda #0
+  sta PTR_RD_RX_BUF
+  sta PTR_WR_RX_BUF
+  rts
+
 
 ; serial_out:
 ; Transmit the char in the A Register via the on board
@@ -384,8 +380,11 @@ out_crlf:
   pla
   rts
 
-; ### Monitor Command Dispatch & Intel HEX Load/Save ###
+; ### Monitor Helper Routines ###
 
+; ### Command Dispatch ###
+; This enables adding commands to WozMon preventing the core code to grow in size
+;
 ; cmd_dispatch:
 ; Called from WozMon's command parser with the current input char in A.
 ; Decodes the single-letter commands R (run), L (load Intel HEX) and
@@ -414,6 +413,8 @@ cmd_dispatch:
   jsr save_ihex
   jmp WARMWOZ
 
+; ### Intel HEX Load/Save ###
+
 ; load_ihex:
 ; Receive an Intel HEX stream from the serial port and store it in memory.
 ; Each data record (type 00) is written at the 16-bit address carried in the
@@ -421,7 +422,7 @@ cmd_dispatch:
 ; verified; on mismatch the load aborts with an error message. An EOF record
 ; (type 01) ends the load with "OK".
 ; Record: ':' LL AAAA TT <data...> CC   (all hex ASCII)
-; Uses IHEX_* zero page scratch. Clobbers A, X, Y.
+; Uses IHEX_* zero page scratch. Overwrites A, X, Y.
 load_ihex:
   ; prompt
   lda #<loadMsg
@@ -487,7 +488,7 @@ load_ihex:
 ; Range comes from WozMon's parsed block syntax: type "START.END" then "S".
 ;   XAML/XAMH = start address, L/H = end address (inclusive).
 ; Writes 16-byte type 00 data records followed by a type 01 EOF record.
-; Uses IHEX_* zero page scratch. Clobbers A, X, Y.
+; Uses IHEX_* zero page scratch. Overwrites A, X, Y.
 save_ihex:
   ; WozMon's block-XAM ("START.END") leaves the start address in STL/STH and
   ; the end address in L/H, but it advances XAML/XAMH to the end while dumping.
@@ -580,10 +581,12 @@ save_ihex:
   sta IHEX_LEN
   rts
 
+; ### Hex & ASCII Helpers ###
+
 ; get_hex_byte:
 ; Read two ASCII hex characters from serial (raw, no echo) and return the
 ; assembled byte in A. The byte is also added into IHEX_SUM for checksum
-; verification. Clobbers A; preserves X, Y.
+; verification. Overwrites A; preserves X, Y.
 get_hex_byte:
   phx
   jsr serial_in_raw     ; high nibble char
@@ -606,7 +609,7 @@ get_hex_byte:
 
 ; ascii_to_nib:
 ; Convert ASCII hex char in A ('0'-'9','A'-'F','a'-'f') to nibble value 0-15.
-; No validation - assumes well-formed input. Clobbers A.
+; No validation - assumes well-formed input. Overwrites A.
 ascii_to_nib:
   cmp #'9'+1
   bcc @digit            ; '0'-'9'
@@ -618,7 +621,7 @@ ascii_to_nib:
 
 ; put_hex_byte:
 ; Transmit the byte in A as two ASCII hex chars and fold it into IHEX_SUM.
-; Clobbers A; preserves X, Y.
+; Overwrites A; preserves X, Y.
 put_hex_byte:
   pha
   clc
@@ -628,9 +631,9 @@ put_hex_byte:
   jsr serial_out_hex    ; reuse BIOS hex printer
   rts
 
-; ### LOAD / SAVE for BASIC (stubs) ###
+; ### LOAD / SAVE for BASIC  ###
 
-; bios_load, bios_save:
+; bios_load, bios_save: (stubs)
 ; The BASIC LOAD and SAVE statements call these through the jump table
 ; (BIOS_LOAD, BIOS_SAVE). They are STUBS for now: they return without doing
 ; anything. They are meant for the SD card routines. What they take (file name
@@ -641,13 +644,16 @@ bios_load:
 bios_save:
   rts
 
-; ROM Data
+
+; ### ROM Data ###
+
 ; Startup Messages
 startupMessage:
-  .byte	$0C,$0D,$0A,"## Simple6502 ##",$0D,$0A,"-- v"
+  .byte	$0C,CR,LF,"## Simple6502 ##",CR,LF,"BIOS v"
   .byte VERSION
-  .byte	$0D,$0A,"OK"
-  .byte $0D,$0A,$00
+  ;.byte	$0D,$0A,"OK"
+  .byte CR,LF
+  .byte $00
 wozmonMessage:
   .byte	CR,LF,"> WozMon <"
   .byte CR,LF,$00
@@ -687,8 +693,8 @@ irq_handler:
     inc TOCKS_H
 @done:
 @not_t1:
-    pla                   ; restore A
-    rti       ; 40 
+    pla         ; restore A
+    rti         ; 40 
 
 ; # NMI Handler Vector 
 nmi_handler:
@@ -696,9 +702,17 @@ nmi_handler:
     rti       ; 40
 
 ; -- MONITOR --
-; .org $FF00
 ; ## WozMon ##
-.segment "WOZMON"  
+
+WOZMON_COLD:    ; Need to move this to a WozMon COLD_Start of sorts 
+; Print woz message
+lda #<wozmonMessage
+sta PTR_TX
+lda #>wozmonMessage
+sta PTR_TX_H
+jsr serial_out_str
+jmp WOZMON      ; go to the monitor (without this it runs into the empty ROM after the BIOS)
+; .segment "WOZMON"   ; .org $FF00
 .include "wozmon_sbc.s" 
 
 ; -- VECTORS --
