@@ -5,6 +5,30 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- MS BASIC source in `basic/`, imported from the `clean_simple6502` branch of
+  [marianol/msbasic](https://github.com/marianol/msbasic) (commit `e2b02db`). It uses the
+  BIOS through the jump table (`BIOS_SERIAL_OUT`, `BIOS_SERIAL_POLL`) and reads the top of
+  memory from the BIOS `RAM_SIZE`. It builds into the ROM at $DC00.
+- `make_rom.sh`: builds the full 32K ROM (BIOS + WozMon + BASIC) into `out/simple6502.bin`.
+- `zeropage.s`: the zero page map. It replaces the zero page equates that were in
+  `defines_simple6502.s`. Variables are declared with `.res` in fixed-address blocks, and
+  `.assert` checks fail the build if a block grows into another one or into the range
+  reserved for BASIC ($4A-$DD).
+- `docs/ZEROPAGE_MAP.md`: the map of the whole zero page (BIOS and BASIC).
+
+### Changed
+
+- `simple6502.cfg` now also has the `BASROM` region ($DC00-$FEFF) for BASIC, and the
+  `ROM` region ends at $DBFF. All segments are optional, so the same file links the BIOS
+  alone, BASIC alone or both.
+- `defines_simple6502.s` only has hardware definitions now, the zero page variables moved
+  to `zeropage.s`. The BIOS binary is byte-identical to 0.7.0 (checked).
+- `bios_jumptable.inc` is the only copy; BASIC uses it from here.
+
 ## [0.7.0]
 
 ### Added

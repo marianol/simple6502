@@ -7,7 +7,7 @@ This is a BIOS for the simple6502 SBC.
 - [x] Serial (ACIA): routines to initialize and manage the serial port.
 - [x] Memory Monitor: WozMon, why innovate?
 - [x] LOAD/SAVE over serial using Intel HEX (SD card support to come later)
-- [ ] BASIC: will start with MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM
+- [ ] BASIC: MS Basic from 1976 to be period correct. As a bonus I will have Woz and Gates code in the same ROM. The source is in [basic/](basic/README.md) and builds into the ROM at $DC00; for now start it from WozMon with `DC00 R`. Still to do: start it from the BIOS and hook up LOAD/SAVE.
 - [ ] SPI Interface with VIA (in IO Card)
 - [ ] SD Card using SPI
 - [ ] VIA helper routines to interface with a 6522 for I/O
@@ -63,6 +63,26 @@ Intel HEX file (via `srec_cat`) alongside the binary. Paste that `.hex` into the
 terminal after the `L` command to load it. The load address comes from the
 `-offset` in `make_usr.sh` (default $0300).
 
+### Building the full ROM (BIOS + BASIC)
+
+`make_rom.sh` assembles `BIOS.s` and `basic/msbasic.s` and links both with
+`simple6502.cfg` into one 32K image, `out/simple6502.bin` (with a `.lbl` label file
+and a `.map`). The same `simple6502.cfg` also links the BIOS alone (`make.sh`) and
+BASIC alone (`basic/make_simple6502.sh`).
+
+```
+$8000-$DBFF  BIOS (jump table first)    $FF00-$FFF9  WozMon
+$DC00-$FEFF  MS BASIC                   $FFFA-$FFFF  vectors
+```
+
+### Zero page
+
+All zero page variables are declared in `zeropage.s` with `.res`, not as equates in
+`defines_simple6502.s`. Each block has a fixed address and a build-time check, so a
+block that grows into its neighbour (or into the range reserved for BASIC) fails the
+build. The full map, with the BASIC variables, is in
+[docs/ZEROPAGE_MAP.md](docs/ZEROPAGE_MAP.md).
+
 ### Burning the ROM
 
 `burn.sh` flashes a ROM image to an Atmel AT28C256 (32K EEPROM) using
@@ -71,8 +91,11 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 32768 bytes before writing; minipro erases and verifies automatically.
 
 ```sh
-./make.sh BIOS.s   # build out/BIOS.bin
-./burn.sh          # burn it to the EEPROM
+./make_rom.sh                  # build the full ROM, out/simple6502.bin
+./burn.sh out/simple6502.bin   # burn it to the EEPROM
+
+./make.sh BIOS.s               # or build the BIOS alone, out/BIOS.bin
+./burn.sh                      # and burn that one (the default image)
 ```
 
 ## Status

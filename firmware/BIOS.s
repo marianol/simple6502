@@ -9,6 +9,7 @@
 .define VERSION "0.7.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
+.include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
 
 ; -- ROM START --
 ;.org $8000 

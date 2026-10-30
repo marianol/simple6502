@@ -112,53 +112,9 @@ Current file: BIOS.s
 000000r 2               VIA_T1_10MS        = 18430
 000000r 2               
 000000r 2               
-000000r 2               ; ### ZeroPage Variables ###
-000000r 2               ZP_START        = $00
-000000r 2               TOCKS           = $E0 ; Jiffy-like clock, 3 bytes ($E0-$E2), ~10ms per tick
-000000r 2               TOCKS_L         = $E0 ; low byte
-000000r 2               TOCKS_M         = $E1 ; mid byte
-000000r 2               TOCKS_H         = $E2 ; high byte
-000000r 2               RAM_SIZE        = $E3 ; RAM Size (top usable RAM address + 1), 2 bytes
-000000r 2               RAM_SIZE_L      = $E3 ; RAM Size LO Byte
-000000r 2               RAM_SIZE_H      = $E4 ; RAM Size HI Byte
-000000r 2               PTR_RD_RX_BUF   = $E5 ; RX Read Buffer Pointer
-000000r 2               PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
-000000r 2               PTR_TX          = $E7 ; Transmit String Pointer
-000000r 2               PTR_TX_L        = $E7 ; LO Byte
-000000r 2               PTR_TX_H        = $E8 ; HI Byte
-000000r 2               POST_PTR        = $E9 ; POST RAM-walk pointer (2 bytes, $E9-$EA)
-000000r 2               VIA_PRESENT     = $EB ; non-zero if VIA1 was detected and initialized
-000000r 2               
-000000r 2               ; Intel HEX load/save (BIOS) scratch
-000000r 2               IHEX_ADDR       = $30 ; record load address (LO/HI)
-000000r 2               IHEX_ADDR_L     = $30
-000000r 2               IHEX_ADDR_H     = $31
-000000r 2               IHEX_LEN        = $32 ; record byte count
-000000r 2               IHEX_TYPE       = $33 ; record type (00 data, 01 EOF)
-000000r 2               IHEX_SUM        = $34 ; running checksum accumulator
-000000r 2               IHEX_TMP        = $35 ; general scratch
-000000r 2               
-000000r 2               ; used by Mon Print Registers
-000000r 2               P_STATUS        = $40
-000000r 2               PC_REG_H        = P_STATUS
-000000r 2               PC_REG_L        = P_STATUS + 1
-000000r 2               SP_REG          = P_STATUS + 2
-000000r 2               A_REG           = P_STATUS + 3
-000000r 2               X_REG           = P_STATUS + 4
-000000r 2               Y_REG           = P_STATUS + 5
-000000r 2               SR_REG          = P_STATUS + 6
-000000r 2               
-000000r 2               ; WozMon ZeroPage Variables
-000000r 2               ; uses $24 to $2B. Defined here (included first) so BIOS routines that share
-000000r 2               ; these locations with WozMon resolve them as zero page.
-000000r 2               XAML            = $24           ;  Last "opened" location Low
-000000r 2               XAMH            = $25           ;  Last "opened" location High
-000000r 2               STL             = $26           ;  Store address Low
-000000r 2               STH             = $27           ;  Store address High
-000000r 2               L               = $28           ;  Hex value parsing Low
-000000r 2               H               = $29           ;  Hex value parsing High
-000000r 2               YSAV            = $2A           ;  Used to see if hex value is given
-000000r 2               MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+000000r 2               ; ### Zero Page ###
+000000r 2               ; The zero page variables are declared in zeropage.s (the zero page map), not here.
+000000r 2               ; Include zeropage.s next to this file in the sources that use them.
 000000r 2               
 000000r 2               
 000000r 2               ; ### Useful Constants ###
@@ -171,33 +127,173 @@ Current file: BIOS.s
 000000r 2               ESC     = $1B
 000000r 2               NULL    = $00
 000000r 2               
-000000r 1               
-000000r 1               ; -- ROM START --
-000000r 1               ;.org $8000
-000000r 1               
-000000r 1               ; ## BIOS Jump Table (public ABI) ##
-000000r 1               ; Fixed-address entry points so external programs can call BIOS routines at
-000000r 1               ; stable addresses that never change as the BIOS internals grow.
-000000r 1               ;
-000000r 1               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
-000000r 1               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
-000000r 1               ; slot - that would shift every entry below it and break existing binaries.
-000000r 1               ; Add new routines to the end only.
-000000r 1               ;
-000000r 1               ; Slot  Address  Routine
-000000r 1               ; ----  -------  ----------------------------------------------------------
-000000r 1               ;  0    $8000    J_COLD_START  - cold start / reset entry
-000000r 1               ;  1    $8003    J_MONITOR     - enter WozMon monitor
-000000r 1               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
-000000r 1               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
-000000r 1               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
-000000r 1               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
-000000r 1               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
-000000r 1               ;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
-000000r 1               ;
-000000r 1               ; The equates for these addresses live in bios_jumptable.inc for programs to
-000000r 1               ; include. Keep that file in sync when appending entries here.
-000000r 1               .segment "HEADER"
+000000r 1               .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
+000000r 2               ; simple6502 zero page map
+000000r 2               ;
+000000r 2               ; This is the one place where zero page variables are declared. Do NOT add
+000000r 2               ; "NAME = $xx" equates for zero page variables to a defines file: declare the
+000000r 2               ; variable here with .res inside the block it belongs to. That way the
+000000r 2               ; assembler allocates the bytes, a block that grows is caught by the .assert
+000000r 2               ; at the end of the block, and the whole map can be read in one file.
+000000r 2               ; See docs/ZEROPAGE_MAP.md for the full map with the BASIC variables.
+000000r 2               ;
+000000r 2               ; Layout rules:
+000000r 2               ;  - Each block is anchored with .org at a FIXED address and its variables
+000000r 2               ;    follow each other with .res. Do not move a block: programs (and the jump
+000000r 2               ;    table, e.g. BIOS_SERIAL_STR reads PTR_TX) rely on these addresses.
+000000r 2               ;  - Several labels in front of one .res are aliases of the same bytes
+000000r 2               ;    (TOCKS and TOCKS_L, PTR_TX and PTR_TX_L ...).
+000000r 2               ;  - WozMon relies on XAML/XAMH, STL/STH and L/H being adjacent, in that order.
+000000r 2               ;  - BASIC owns BASIC_ZP_START..BASIC_ZP_END. It declares its variables in
+000000r 2               ;    basic/zeropage_basic.s. It shares RAM_SIZE with the BIOS (BASIC's MEMSIZ).
+000000r 2               ;
+000000r 2               ; This file is included by BIOS.s and by basic/msbasic.s, so both builds check
+000000r 2               ; their blocks against the same map.
+000000r 2               
+000000r 2               ; The zero page range reserved for BASIC. Its variables are declared in
+000000r 2               ; basic/zeropage_basic.s, which checks that they stay inside this range.
+000000r 2               ; $4A-$DD: the BASIC variables, the copy of the CHRGET code and RNDSEED.
+000000r 2               ; $DE-$DF stay free as spare.
+000000r 2               BASIC_ZP_START = $4A
+000000r 2               BASIC_ZP_END   = $DD
+000000r 2               
+000000r 2               .feature org_per_seg
+000000r 2               .zeropage
+000000r 2               
+000000r 2               ; ----------------------------------------------------------------------------
+000000r 2               ; $00 fault beacon scratch
+000000r 2               ; post_fail writes $01/$00 here to toggle D0 on the data bus.
+000000r 2               ; ----------------------------------------------------------------------------
+000000r 2               .org $00
+000000  2               ZP_START:
+000000  2  xx             .res 1
+000001  2               .assert * <= $24, error, "zero page: block at $00 runs into WozMon variables"
+000001  2               
+000001  2               ; ----------------------------------------------------------------------------
+000001  2               ; $24-$2B WozMon
+000001  2               ; ----------------------------------------------------------------------------
+000001  2               .org $24
+000024  2               XAML:                   ; Last "opened" location Low
+000024  2  xx             .res 1
+000025  2               XAMH:                   ; Last "opened" location High
+000025  2  xx             .res 1
+000026  2               STL:                    ; Store address Low
+000026  2  xx             .res 1
+000027  2               STH:                    ; Store address High
+000027  2  xx             .res 1
+000028  2               L:                      ; Hex value parsing Low
+000028  2  xx             .res 1
+000029  2               H:                      ; Hex value parsing High
+000029  2  xx             .res 1
+00002A  2               YSAV:                   ; Used to see if hex value is given
+00002A  2  xx             .res 1
+00002B  2               MODE:                   ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
+00002B  2  xx             .res 1
+00002C  2               .assert * <= $30, error, "zero page: WozMon block runs into the Intel HEX variables"
+00002C  2               
+00002C  2               ; ----------------------------------------------------------------------------
+00002C  2               ; $30-$35 Intel HEX load/save scratch
+00002C  2               ; ----------------------------------------------------------------------------
+00002C  2               .org $30
+000030  2               IHEX_ADDR:              ; record load address (LO/HI)
+000030  2               IHEX_ADDR_L:
+000030  2  xx             .res 1
+000031  2               IHEX_ADDR_H:
+000031  2  xx             .res 1
+000032  2               IHEX_LEN:               ; record byte count
+000032  2  xx             .res 1
+000033  2               IHEX_TYPE:              ; record type (00 data, 01 EOF)
+000033  2  xx             .res 1
+000034  2               IHEX_SUM:               ; running checksum accumulator
+000034  2  xx             .res 1
+000035  2               IHEX_TMP:               ; general scratch
+000035  2  xx             .res 1
+000036  2               .assert * <= $40, error, "zero page: Intel HEX block runs into the register print variables"
+000036  2               
+000036  2               ; ----------------------------------------------------------------------------
+000036  2               ; $40-$46 monitor register print
+000036  2               ; ----------------------------------------------------------------------------
+000036  2               .org $40
+000040  2               P_STATUS:
+000040  2               PC_REG_H:
+000040  2  xx             .res 1
+000041  2               PC_REG_L:
+000041  2  xx             .res 1
+000042  2               SP_REG:
+000042  2  xx             .res 1
+000043  2               A_REG:
+000043  2  xx             .res 1
+000044  2               X_REG:
+000044  2  xx             .res 1
+000045  2               Y_REG:
+000045  2  xx             .res 1
+000046  2               SR_REG:
+000046  2  xx             .res 1
+000047  2               .assert * <= BASIC_ZP_START, error, "zero page: register print block runs into the BASIC variables"
+000047  2               
+000047  2               ; ----------------------------------------------------------------------------
+000047  2               ; BASIC_ZP_START-BASIC_ZP_END: reserved for BASIC, see the top of this file.
+000047  2               ; ----------------------------------------------------------------------------
+000047  2               
+000047  2               ; ----------------------------------------------------------------------------
+000047  2               ; $E0-$EB BIOS system variables
+000047  2               ; ----------------------------------------------------------------------------
+000047  2               .org $E0
+0000E0  2               TOCKS:                  ; Jiffy-like clock, 3 bytes, ~10ms per tick
+0000E0  2               TOCKS_L:
+0000E0  2  xx             .res 1
+0000E1  2               TOCKS_M:
+0000E1  2  xx             .res 1
+0000E2  2               TOCKS_H:
+0000E2  2  xx             .res 1
+0000E3  2               RAM_SIZE:               ; RAM size, 2 bytes: top usable RAM address + 1.
+0000E3  2               RAM_SIZE_L:             ; The POST writes it, BASIC reads it as MEMSIZ.
+0000E3  2  xx             .res 1
+0000E4  2               RAM_SIZE_H:
+0000E4  2  xx             .res 1
+0000E5  2               PTR_RD_RX_BUF:          ; RX Read Buffer Pointer
+0000E5  2  xx             .res 1
+0000E6  2               PTR_WR_RX_BUF:          ; RX Write Buffer Pointer
+0000E6  2  xx             .res 1
+0000E7  2               PTR_TX:                 ; Transmit string pointer (used by BIOS_SERIAL_STR)
+0000E7  2               PTR_TX_L:
+0000E7  2  xx             .res 1
+0000E8  2               PTR_TX_H:
+0000E8  2  xx             .res 1
+0000E9  2               POST_PTR:               ; POST RAM-walk pointer, 2 bytes
+0000E9  2  xx xx          .res 2
+0000EB  2               VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
+0000EB  2  xx             .res 1
+0000EC  2               .assert * <= $100, error, "zero page: BIOS system block runs past the end of the zero page"
+0000EC  2               .assert TOCKS > BASIC_ZP_END, error, "zero page: BIOS system block overlaps the BASIC variables"
+0000EC  2               
+0000EC  1               
+0000EC  1               ; -- ROM START --
+0000EC  1               ;.org $8000
+0000EC  1               
+0000EC  1               ; ## BIOS Jump Table (public ABI) ##
+0000EC  1               ; Fixed-address entry points so external programs can call BIOS routines at
+0000EC  1               ; stable addresses that never change as the BIOS internals grow.
+0000EC  1               ;
+0000EC  1               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
+0000EC  1               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
+0000EC  1               ; slot - that would shift every entry below it and break existing binaries.
+0000EC  1               ; Add new routines to the end only.
+0000EC  1               ;
+0000EC  1               ; Slot  Address  Routine
+0000EC  1               ; ----  -------  ----------------------------------------------------------
+0000EC  1               ;  0    $8000    J_COLD_START  - cold start / reset entry
+0000EC  1               ;  1    $8003    J_MONITOR     - enter WozMon monitor
+0000EC  1               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
+0000EC  1               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
+0000EC  1               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
+0000EC  1               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
+0000EC  1               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
+0000EC  1               ;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
+0000EC  1               ;
+0000EC  1               ; The equates for these addresses live in bios_jumptable.inc for programs to
+0000EC  1               ; include. Keep that file in sync when appending entries here.
+0000EC  1               .segment "HEADER"
 000000r 1  4C rr rr     J_COLD_START: jmp reset          ; slot 0  $8000
 000003r 1  4C rr rr     J_MONITOR:    jmp WOZMON         ; slot 1  $8003
 000006r 1  4C rr rr     J_SERIAL_OUT: jmp serial_out     ; slot 2  $8006
@@ -917,7 +1013,7 @@ Current file: BIOS.s
 000000r 2               ; 040A   30 F6                BMI L0402
 000000r 2               ; 040C   4C 00 04             JMP L0400
 000000r 2               ;                             .END
-000000r 2               ; Page 0 Variables (XAML..MODE) are defined in defines_simple6502.s so that
+000000r 2               ; Page 0 Variables (XAML..MODE) are declared in zeropage.s so that
 000000r 2               ; the BIOS Intel HEX routines can share them as zero page.
 000000r 2               
 000000r 2               ; Other Variables

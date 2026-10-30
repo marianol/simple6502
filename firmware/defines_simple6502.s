@@ -97,53 +97,9 @@ VIA_IFR_T1         = %01000000
 VIA_T1_10MS        = 18430
 
 
-; ### ZeroPage Variables ###
-ZP_START        = $00
-TOCKS           = $E0 ; Jiffy-like clock, 3 bytes ($E0-$E2), ~10ms per tick
-TOCKS_L         = $E0 ; low byte
-TOCKS_M         = $E1 ; mid byte
-TOCKS_H         = $E2 ; high byte
-RAM_SIZE        = $E3 ; RAM Size (top usable RAM address + 1), 2 bytes
-RAM_SIZE_L      = $E3 ; RAM Size LO Byte
-RAM_SIZE_H      = $E4 ; RAM Size HI Byte
-PTR_RD_RX_BUF   = $E5 ; RX Read Buffer Pointer
-PTR_WR_RX_BUF   = $E6 ; RX Write Buffer Pointer
-PTR_TX          = $E7 ; Transmit String Pointer
-PTR_TX_L        = $E7 ; LO Byte
-PTR_TX_H        = $E8 ; HI Byte
-POST_PTR        = $E9 ; POST RAM-walk pointer (2 bytes, $E9-$EA)
-VIA_PRESENT     = $EB ; non-zero if VIA1 was detected and initialized
-
-; Intel HEX load/save (BIOS) scratch
-IHEX_ADDR       = $30 ; record load address (LO/HI)
-IHEX_ADDR_L     = $30
-IHEX_ADDR_H     = $31
-IHEX_LEN        = $32 ; record byte count
-IHEX_TYPE       = $33 ; record type (00 data, 01 EOF)
-IHEX_SUM        = $34 ; running checksum accumulator
-IHEX_TMP        = $35 ; general scratch
-
-; used by Mon Print Registers
-P_STATUS        = $40
-PC_REG_H        = P_STATUS
-PC_REG_L        = P_STATUS + 1
-SP_REG          = P_STATUS + 2
-A_REG           = P_STATUS + 3
-X_REG           = P_STATUS + 4
-Y_REG           = P_STATUS + 5
-SR_REG          = P_STATUS + 6
-
-; WozMon ZeroPage Variables
-; uses $24 to $2B. Defined here (included first) so BIOS routines that share
-; these locations with WozMon resolve them as zero page.
-XAML            = $24           ;  Last "opened" location Low
-XAMH            = $25           ;  Last "opened" location High
-STL             = $26           ;  Store address Low
-STH             = $27           ;  Store address High
-L               = $28           ;  Hex value parsing Low
-H               = $29           ;  Hex value parsing High
-YSAV            = $2A           ;  Used to see if hex value is given
-MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+; ### Zero Page ###
+; The zero page variables are declared in zeropage.s (the zero page map), not here.
+; Include zeropage.s next to this file in the sources that use them.
 
 
 ; ### Useful Constants ###

@@ -22,7 +22,7 @@
 ; 040A   30 F6                BMI L0402
 ; 040C   4C 00 04             JMP L0400
 ;                             .END
-; Page 0 Variables (XAML..MODE) are defined in defines_simple6502.s so that
+; Page 0 Variables (XAML..MODE) are declared in zeropage.s so that
 ; the BIOS Intel HEX routines can share them as zero page.
 
 ; Other Variables
