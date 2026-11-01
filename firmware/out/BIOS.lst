@@ -130,12 +130,12 @@ Current file: BIOS.s
 000000r 1               .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
 000000r 2               ; simple6502 zero page map
 000000r 2               ;
-000000r 2               ; This is the one place where zero page variables are declared. Do NOT add
-000000r 2               ; "NAME = $xx" equates for zero page variables to a defines file: declare the
-000000r 2               ; variable here with .res inside the block it belongs to. That way the
-000000r 2               ; assembler allocates the bytes, a block that grows is caught by the .assert
+000000r 2               ; This is the one place where zero page variables are declared. ZP variables
+000000r 2               ; are declared here, reserving the space with .res.
+000000r 2               ; A block that grows over the next one is caught by the .assert
 000000r 2               ; at the end of the block, and the whole map can be read in one file.
 000000r 2               ; See docs/ZEROPAGE_MAP.md for the full map with the BASIC variables.
+000000r 2               ; Zero page that is not declared here is scratch, free for any program to use.
 000000r 2               ;
 000000r 2               ; Layout rules:
 000000r 2               ;  - Each block is anchored with .org at a FIXED address and its variables
@@ -157,7 +157,7 @@ Current file: BIOS.s
 000000r 2               BASIC_ZP_START = $4A
 000000r 2               BASIC_ZP_END   = $DD
 000000r 2               
-000000r 2               .feature org_per_seg
+000000r 2               .feature org_per_seg    ; enable segment-Local Scope
 000000r 2               .zeropage
 000000r 2               
 000000r 2               ; ----------------------------------------------------------------------------
@@ -232,11 +232,11 @@ Current file: BIOS.s
 000047  2               .assert * <= BASIC_ZP_START, error, "zero page: register print block runs into the BASIC variables"
 000047  2               
 000047  2               ; ----------------------------------------------------------------------------
-000047  2               ; BASIC_ZP_START-BASIC_ZP_END: reserved for BASIC, see the top of this file.
+000047  2               ; BASIC_ZP_START-BASIC_ZP_END: reserved for BASIC.
 000047  2               ; ----------------------------------------------------------------------------
 000047  2               
 000047  2               ; ----------------------------------------------------------------------------
-000047  2               ; $E0-$ED BIOS system variables
+000047  2               ; $E0-$EB BIOS system variables
 000047  2               ; ----------------------------------------------------------------------------
 000047  2               .org $E0
 0000E0  2               TOCKS:                  ; Jiffy-like clock, 3 bytes, ~10ms per tick
@@ -260,110 +260,106 @@ Current file: BIOS.s
 0000E7  2  xx             .res 1
 0000E8  2               PTR_TX_H:
 0000E8  2  xx             .res 1
-0000E9  2               POST_PTR:               ; POST RAM-walk pointer, 2 bytes
-0000E9  2  xx xx          .res 2
-0000EB  2               VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
-0000EB  2  xx             .res 1
-0000EC  2               BASIC_STARTED:          ; non-zero once BASIC has been cold started. The BIOS reset clears it and
-0000EC  2  xx             .res 1                ; BASIC's cold start sets it. The monitor X command warm starts BASIC only
-0000ED  2                                       ; if it is set, because a warm start needs what the cold start sets up.
-0000ED  2               MACHINE_CONFIG:         ; One bit per peripheral, set when the BIOS found and initialized it. The BIOS
-0000ED  2  xx             .res 1                ; reset clears it. Programs may read it, the bits are BIOS_CFG_* in bios_jumptable.inc.
-0000EE  2               .assert * <= $100, error, "zero page: BIOS system block runs past the end of the zero page"
-0000EE  2               .assert TOCKS > BASIC_ZP_END, error, "zero page: BIOS system block overlaps the BASIC variables"
-0000EE  2               
-0000EE  1               
-0000EE  1               ; -- ROM START --
-0000EE  1               ;.org $8000
-0000EE  1               
-0000EE  1               ; ## BIOS Jump Table (public ABI) ##
-0000EE  1               ; The fixed-address jump table at the start of ROM is in bios_header.s (the HEADER
-0000EE  1               ; segment). Its entries are APPEND-ONLY, read the contract at the top of that file.
-0000EE  1               ; bios_jumptable.inc has the public equates and is checked against the table.
-0000EE  1               .include "bios_jumptable.inc"
-0000EE  2               ; simple6502 BIOS - Public Jump Table (ABI)
-0000EE  2               ;
-0000EE  2               ; Fixed entry-point addresses for the BIOS routines. External programs that run
-0000EE  2               ; on the simple6502 (user programs, loaders, future BASIC, etc.) should call
-0000EE  2               ; these addresses rather than the BIOS's internal labels, which move whenever
-0000EE  2               ; the BIOS is rebuilt.
-0000EE  2               ;
-0000EE  2               ; The table lives at the start of ROM ($8000); each entry is a 3-byte JMP.
-0000EE  2               ;
-0000EE  2               ; CONTRACT: the table is APPEND-ONLY. Addresses here are frozen. New routines
-0000EE  2               ; are added at the end (next free slot). Never insert or reorder.
-0000EE  2               ;
-0000EE  2               ; Usage from an assembly program:
-0000EE  2               ;     .include "bios_jumptable.inc"
-0000EE  2               ;     lda #'A'
-0000EE  2               ;     jsr BIOS_SERIAL_OUT
-0000EE  2               
-0000EE  2               BIOS_JUMPTABLE = $8000              ; base address of the table
-0000EE  2               
-0000EE  2               BIOS_COLD_START = BIOS_JUMPTABLE + 0*3   ; $8000 cold start / reset
-0000EE  2               BIOS_MONITOR    = BIOS_JUMPTABLE + 1*3   ; $8003 enter WozMon
-0000EE  2               BIOS_SERIAL_OUT = BIOS_JUMPTABLE + 2*3   ; $8006 transmit A over serial
-0000EE  2               BIOS_SERIAL_IN  = BIOS_JUMPTABLE + 3*3   ; $8009 receive byte (carry set if data in A)
-0000EE  2               BIOS_SERIAL_STR = BIOS_JUMPTABLE + 4*3   ; $800C transmit null-terminated string @ PTR_TX
-0000EE  2               BIOS_SERIAL_HEX = BIOS_JUMPTABLE + 5*3   ; $800F transmit A as two ASCII hex digits
-0000EE  2               BIOS_OUT_CRLF   = BIOS_JUMPTABLE + 6*3   ; $8012 transmit CR + LF
-0000EE  2               BIOS_SERIAL_POLL = BIOS_JUMPTABLE + 7*3  ; $8015 receive byte, no echo (carry set if data in A)
-0000EE  2               BIOS_BASIC_COLD = BIOS_JUMPTABLE + 8*3   ; $8018 cold start MS BASIC (new program, memory cleared)
-0000EE  2               BIOS_BASIC_WARM = BIOS_JUMPTABLE + 9*3   ; $801B warm start MS BASIC (keeps the program and variables)
-0000EE  2               BIOS_LOAD       = BIOS_JUMPTABLE + 10*3  ; $801E BASIC LOAD (stub for now, just RTS)
-0000EE  2               BIOS_SAVE       = BIOS_JUMPTABLE + 11*3  ; $8021 BASIC SAVE (stub for now, just RTS)
-0000EE  2               BIOS_GET_TOCKS  = BIOS_JUMPTABLE + 12*3  ; $8024 read the TOCKS jiffy clock: A = low, X = middle, Y = high byte
-0000EE  2               
-0000EE  2               ; Machine configuration byte, in zero page. One bit per peripheral: the BIOS sets it when it has
-0000EE  2               ; found and initialized the peripheral. The BIOS reset clears the byte, so only the peripherals
-0000EE  2               ; that are really there are set. Add a bit here when a peripheral is supported.
-0000EE  2               ; (zeropage.s declares the byte as MACHINE_CONFIG, bios_header.s checks that they agree.)
-0000EE  2               BIOS_MACHINE_CONFIG = $ED
-0000EE  2               BIOS_CFG_SERIAL = %00000001         ; bit 0: on board serial port (ACIA) initialized
-0000EE  2               BIOS_CFG_VIA1   = %00000010         ; bit 1: VIA 1 found and initialized (the TOCKS clock runs)
-0000EE  2               BIOS_CFG_VIA2   = %00000100         ; bit 2: VIA 2 (reserved, nothing sets it yet)
-0000EE  2               
-0000EE  2               ; MS BASIC's own entry points, the two JMPs at the start of its ROM region
-0000EE  2               ; (basic/header.s, BASROM at $DC00 in simple6502.cfg). The jump table slots above
-0000EE  2               ; go there. basic/header.s checks at link time that BASIC really starts at these.
-0000EE  2               BASIC_COLD_START = $DC00            ; cold start
-0000EE  2               BASIC_WARM_START = $DC03            ; warm start (RESTART)
-0000EE  2               
-0000EE  1               .include "bios_header.s"
-0000EE  2               ; simple6502 BIOS header: the jump table (public ABI)
-0000EE  2               ;
-0000EE  2               ; Fixed-address entry points so external programs can call BIOS routines at
-0000EE  2               ; stable addresses that never change as the BIOS internals grow.
-0000EE  2               ;
-0000EE  2               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
-0000EE  2               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
-0000EE  2               ; slot - that would shift every entry below it and break existing binaries.
-0000EE  2               ; Add new routines to the end only.
-0000EE  2               ;
-0000EE  2               ; Slot  Address  Routine
-0000EE  2               ; ----  -------  ----------------------------------------------------------
-0000EE  2               ;  0    $8000    J_COLD_START  - cold start / reset entry
-0000EE  2               ;  1    $8003    J_MONITOR     - enter WozMon monitor
-0000EE  2               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
-0000EE  2               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
-0000EE  2               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
-0000EE  2               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
-0000EE  2               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
-0000EE  2               ;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
-0000EE  2               ;  8    $8018    J_BASIC_COLD  - cold start MS BASIC (new program, memory cleared)
-0000EE  2               ;  9    $801B    J_BASIC_WARM  - warm start MS BASIC (keeps the program and variables)
-0000EE  2               ; 10    $801E    J_LOAD        - BASIC LOAD (stub for now, just RTS)
-0000EE  2               ; 11    $8021    J_SAVE        - BASIC SAVE (stub for now, just RTS)
-0000EE  2               ; 12    $8024    J_GET_TOCKS   - read the TOCKS jiffy clock (A = low, X = middle, Y = high)
-0000EE  2               ;
-0000EE  2               ; The equates for these addresses live in bios_jumptable.inc for programs to
-0000EE  2               ; include. The .asserts at the end of this file stop the build if the two get
-0000EE  2               ; out of sync, so when you append an entry here also add its equate there.
-0000EE  2               ;
-0000EE  2               ; Included by BIOS.s. The routines the entries jump to are in BIOS.s and
-0000EE  2               ; wozmon_sbc.s. BIOS.s includes bios_jumptable.inc before this file.
-0000EE  2               
-0000EE  2               .segment "HEADER"
+0000E9  2               VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
+0000E9  2  xx             .res 1
+0000EA  2               BASIC_STARTED:          ; non-zero once BASIC has been cold started. The BIOS reset clears it and
+0000EA  2  xx             .res 1                ; BASIC's cold start sets it. The monitor X command warm starts BASIC only
+0000EB  2                                       ; if it is set, because a warm start needs what the cold start sets up.
+0000EB  2               MACHINE_CONFIG:         ; One bit per peripheral, set when the BIOS found and initialized it. The BIOS
+0000EB  2  xx             .res 1                ; reset clears it. Programs may read it, the bits are BIOS_CFG_* in bios_jumptable.inc.
+0000EC  2               .assert * <= $100, error, "zero page: BIOS system block runs past the end of the zero page"
+0000EC  2               .assert TOCKS > BASIC_ZP_END, error, "zero page: BIOS system block overlaps the BASIC variables"
+0000EC  2               
+0000EC  1               
+0000EC  1               ; -- ROM START --
+0000EC  1               ;.org $8000
+0000EC  1               
+0000EC  1               ; ## BIOS Jump Table (public ABI) ##
+0000EC  1               ; The fixed-address jump table at the start of ROM is in bios_header.s
+0000EC  1               .include "bios_jumptable.inc"
+0000EC  2               ; simple6502 BIOS - Public Jump Table (ABI)
+0000EC  2               ;
+0000EC  2               ; Fixed entry-point addresses for the BIOS routines. External programs that run
+0000EC  2               ; on the simple6502 (user programs, loaders, future BASIC, etc.) should call
+0000EC  2               ; these addresses rather than the BIOS's internal labels, which move whenever
+0000EC  2               ; the BIOS is rebuilt.
+0000EC  2               ;
+0000EC  2               ; The table lives at the start of ROM ($8000); each entry is a 3-byte JMP.
+0000EC  2               ;
+0000EC  2               ; CONTRACT: the table is APPEND-ONLY. Addresses here are frozen. New routines
+0000EC  2               ; are added at the end (next free slot). Never insert or reorder.
+0000EC  2               ;
+0000EC  2               ; Usage from an assembly program:
+0000EC  2               ;     .include "bios_jumptable.inc"
+0000EC  2               ;     lda #'A'
+0000EC  2               ;     jsr BIOS_SERIAL_OUT
+0000EC  2               
+0000EC  2               BIOS_JUMPTABLE = $8000              ; base address of the table
+0000EC  2               
+0000EC  2               BIOS_COLD_START = BIOS_JUMPTABLE + 0*3   ; $8000 cold start / reset
+0000EC  2               BIOS_MONITOR    = BIOS_JUMPTABLE + 1*3   ; $8003 enter WozMon
+0000EC  2               BIOS_SERIAL_OUT = BIOS_JUMPTABLE + 2*3   ; $8006 transmit A over serial
+0000EC  2               BIOS_SERIAL_IN  = BIOS_JUMPTABLE + 3*3   ; $8009 receive byte (carry set if data in A)
+0000EC  2               BIOS_SERIAL_STR = BIOS_JUMPTABLE + 4*3   ; $800C transmit null-terminated string @ PTR_TX
+0000EC  2               BIOS_SERIAL_HEX = BIOS_JUMPTABLE + 5*3   ; $800F transmit A as two ASCII hex digits
+0000EC  2               BIOS_OUT_CRLF   = BIOS_JUMPTABLE + 6*3   ; $8012 transmit CR + LF
+0000EC  2               BIOS_SERIAL_POLL = BIOS_JUMPTABLE + 7*3  ; $8015 receive byte, no echo (carry set if data in A)
+0000EC  2               BIOS_BASIC_COLD = BIOS_JUMPTABLE + 8*3   ; $8018 cold start MS BASIC (new program, memory cleared)
+0000EC  2               BIOS_BASIC_WARM = BIOS_JUMPTABLE + 9*3   ; $801B warm start MS BASIC (keeps the program and variables)
+0000EC  2               BIOS_LOAD       = BIOS_JUMPTABLE + 10*3  ; $801E BASIC LOAD (stub for now, just RTS)
+0000EC  2               BIOS_SAVE       = BIOS_JUMPTABLE + 11*3  ; $8021 BASIC SAVE (stub for now, just RTS)
+0000EC  2               BIOS_GET_TOCKS  = BIOS_JUMPTABLE + 12*3  ; $8024 read the TOCKS jiffy clock: A = low, X = middle, Y = high byte
+0000EC  2               
+0000EC  2               ; Machine configuration byte, in zero page. One bit per peripheral: the BIOS sets it when it has
+0000EC  2               ; found and initialized the peripheral. The BIOS reset clears the byte, so only the peripherals
+0000EC  2               ; that are really there are set. Add a bit here when a peripheral is supported.
+0000EC  2               ; (zeropage.s declares the byte as MACHINE_CONFIG, bios_header.s checks that they agree.)
+0000EC  2               BIOS_MACHINE_CONFIG = $EB
+0000EC  2               BIOS_CFG_SERIAL = %00000001         ; bit 0: on board serial port (ACIA) initialized
+0000EC  2               BIOS_CFG_VIA1   = %00000010         ; bit 1: VIA 1 found and initialized (the TOCKS clock runs)
+0000EC  2               BIOS_CFG_VIA2   = %00000100         ; bit 2: VIA 2 (reserved, nothing sets it yet)
+0000EC  2               
+0000EC  2               ; MS BASIC's own entry points, the two JMPs at the start of its ROM region
+0000EC  2               ; (basic/header.s, BASROM at $DC00 in simple6502.cfg). The jump table slots above
+0000EC  2               ; go there. basic/header.s checks at link time that BASIC really starts at these.
+0000EC  2               BASIC_COLD_START = $DC00            ; cold start
+0000EC  2               BASIC_WARM_START = $DC03            ; warm start (RESTART)
+0000EC  2               
+0000EC  1               .include "bios_header.s"
+0000EC  2               ; simple6502 BIOS header: the jump table (public ABI)
+0000EC  2               ;
+0000EC  2               ; Fixed-address entry points so external programs can call BIOS routines at
+0000EC  2               ; stable addresses that never change as the BIOS internals grow.
+0000EC  2               ;
+0000EC  2               ; The table lives at the very start of ROM ($8000) and each entry is a 3-byte
+0000EC  2               ; JMP. CONTRACT: entries are APPEND-ONLY. Never insert, reorder, or remove a
+0000EC  2               ; slot - that would shift every entry below it and break existing binaries.
+0000EC  2               ; Add new routines to the end only.
+0000EC  2               ;
+0000EC  2               ; Slot  Address  Routine
+0000EC  2               ; ----  -------  ----------------------------------------------------------
+0000EC  2               ;  0    $8000    J_COLD_START  - cold start / reset entry
+0000EC  2               ;  1    $8003    J_MONITOR     - enter WozMon monitor
+0000EC  2               ;  2    $8006    J_SERIAL_OUT  - transmit A over serial
+0000EC  2               ;  3    $8009    J_SERIAL_IN   - receive a byte (carry set if data)
+0000EC  2               ;  4    $800C    J_SERIAL_STR  - transmit null-terminated string @ PTR_TX
+0000EC  2               ;  5    $800F    J_SERIAL_HEX  - transmit A as two ASCII hex digits
+0000EC  2               ;  6    $8012    J_OUT_CRLF    - transmit CR+LF
+0000EC  2               ;  7    $8015    J_SERIAL_POLL - receive a byte, no echo (carry set if data)
+0000EC  2               ;  8    $8018    J_BASIC_COLD  - cold start MS BASIC (new program, memory cleared)
+0000EC  2               ;  9    $801B    J_BASIC_WARM  - warm start MS BASIC (keeps the program and variables)
+0000EC  2               ; 10    $801E    J_LOAD        - BASIC LOAD (stub for now, just RTS)
+0000EC  2               ; 11    $8021    J_SAVE        - BASIC SAVE (stub for now, just RTS)
+0000EC  2               ; 12    $8024    J_GET_TOCKS   - read the TOCKS jiffy clock (A = low, X = middle, Y = high)
+0000EC  2               ;
+0000EC  2               ; The equates for these addresses live in bios_jumptable.inc for programs to
+0000EC  2               ; include. The .asserts at the end of this file stop the build if the two get
+0000EC  2               ; out of sync, so when you append an entry here also add its equate there.
+0000EC  2               ;
+0000EC  2               ; Included by BIOS.s. The routines the entries jump to are in BIOS.s and
+0000EC  2               ; wozmon_sbc.s. BIOS.s includes bios_jumptable.inc before this file.
+0000EC  2               
+0000EC  2               .segment "HEADER"
 000000r 2  4C rr rr     J_COLD_START:  jmp reset            ; slot 0  $8000
 000003r 2  4C rr rr     J_MONITOR:     jmp WOZMON           ; slot 1  $8003
 000006r 2  4C rr rr     J_SERIAL_OUT:  jmp serial_out       ; slot 2  $8006
@@ -401,63 +397,66 @@ Current file: BIOS.s
 000027r 1               
 000027r 1               ; ## BIOS Start ##
 000027r 1               .segment "BIOS"
-000000r 1  73 69 6D 70    .byte "simple6502 BIOS Ver: "
-000004r 1  6C 65 36 35  
-000008r 1  30 32 20 42  
-000015r 1  30 2E 31 30    .byte VERSION
-000019r 1  2E 30        
-00001Br 1               
-00001Br 1               ; Reset Vector Start
-00001Br 1               reset:
-00001Br 1  78             sei               ; 78      disable interrupts
-00001Cr 1  D8             cld               ; D8      turn decimal mode off
-00001Dr 1               
-00001Dr 1                 ; --- Memory Check: Zero Page and Stack (Page 1) ---
-00001Dr 1                 ; These run BEFORE the stack is used so we can test Page 1
-00001Dr 1                 ; Using ONLY the A and X and immediate values - no ZP variables, no stack.
-00001Dr 1                 ; A mismatch jumps to post_fail.
-00001Dr 1               
-00001Dr 1                 ; Test Zero Page ($0000-$00FF): checkerboard $55 then $AA
-00001Dr 1  A2 00          ldx #0
-00001Fr 1               @zp_55:
-00001Fr 1  A9 55          lda #$55
-000021r 1  95 00          sta $00,x
-000023r 1  D5 00          cmp $00,x
-000025r 1  D0 4C          bne post_fail
-000027r 1  E8             inx
-000028r 1  D0 F5          bne @zp_55
-00002Ar 1               @zp_aa:
-00002Ar 1  A9 AA          lda #$AA
-00002Cr 1  95 00          sta $00,x         ; x wrapped back to 0
-00002Er 1  D5 00          cmp $00,x
-000030r 1  D0 41          bne post_fail
-000032r 1  E8             inx
-000033r 1  D0 F5          bne @zp_aa
-000035r 1               
-000035r 1                 ; Test Stack page / Page 1 ($0100-$01FF): safe to clobber, nothing pushed yet
-000035r 1  A2 00          ldx #0
-000037r 1               @sp_55:
-000037r 1  A9 55          lda #$55
-000039r 1  9D 00 01       sta $0100,x
-00003Cr 1  DD 00 01       cmp $0100,x
-00003Fr 1  D0 32          bne post_fail
-000041r 1  E8             inx
-000042r 1  D0 F3          bne @sp_55
-000044r 1               @sp_aa:
-000044r 1  A9 AA          lda #$AA
-000046r 1  9D 00 01       sta $0100,x       ; x wrapped back to 0
-000049r 1  DD 00 01       cmp $0100,x
-00004Cr 1  D0 25          bne post_fail
-00004Er 1  E8             inx
-00004Fr 1  D0 F3          bne @sp_aa
-000051r 1               
-000051r 1                 ; ZP and stack are good - establish the stack pointer and carry on.
-000051r 1  A2 FF          ldx #$FF          ; A2 FF
-000053r 1  9A             txs               ; 9A      set the stack start
-000054r 1  64 EC          stz BASIC_STARTED ; BASIC has not been started (the ZP test left $AA here)
-000056r 1  64 ED          stz MACHINE_CONFIG ; no peripheral is initialized yet, init_serial and via_init set their bits
+000000r 1                 ; Write an identifier in the rom so it can be identified when dumping the ROM
+000000r 1  42 49 4F 53    .byte "BIOS-simple6502-v"
+000004r 1  2D 73 69 6D  
+000008r 1  70 6C 65 36  
+000011r 1  30 2E 31 30    .byte VERSION
+000015r 1  2E 30        
+000017r 1               
+000017r 1               ; Reset Vector Start - BIOS Cold Start
+000017r 1               reset:
+000017r 1  78             sei               ; 78      disable interrupts
+000018r 1  D8             cld               ; D8      turn decimal mode off
+000019r 1                 ; Memory Check: Zero Page and Stack (Page 1)
+000019r 1                 ; These run BEFORE the stack is used so we can test Page 1
+000019r 1                 ; A mismatch jumps to post_fail.
+000019r 1               
+000019r 1                 ; Test Zero Page ($0000-$00FF): checkerboard $55 then $AA
+000019r 1  A2 00          ldx #0
+00001Br 1               @zp_55:
+00001Br 1  A9 55          lda #$55
+00001Dr 1  95 00          sta $00,x
+00001Fr 1  D5 00          cmp $00,x
+000021r 1  D0 50          bne post_fail
+000023r 1  E8             inx
+000024r 1  D0 F5          bne @zp_55
+000026r 1               @zp_aa:
+000026r 1  A9 AA          lda #$AA
+000028r 1  95 00          sta $00,x         ; x wrapped back to 0
+00002Ar 1  D5 00          cmp $00,x
+00002Cr 1  D0 45          bne post_fail
+00002Er 1  E8             inx
+00002Fr 1  D0 F5          bne @zp_aa
+000031r 1               
+000031r 1                 ; Test Stack page / Page 1 ($0100-$01FF): checkerboard $55 then $AA
+000031r 1  A2 00          ldx #0
+000033r 1               @sp_55:
+000033r 1  A9 55          lda #$55
+000035r 1  9D 00 01       sta $0100,x
+000038r 1  DD 00 01       cmp $0100,x
+00003Br 1  D0 36          bne post_fail
+00003Dr 1  E8             inx
+00003Er 1  D0 F3          bne @sp_55
+000040r 1               @sp_aa:
+000040r 1  A9 AA          lda #$AA
+000042r 1  9D 00 01       sta $0100,x       ; x wrapped back to 0
+000045r 1  DD 00 01       cmp $0100,x
+000048r 1  D0 29          bne post_fail
+00004Ar 1  E8             inx
+00004Br 1  D0 F3          bne @sp_aa
+00004Dr 1               
+00004Dr 1                 ; Initialize ZP veriables, the ZP test left $AA
+00004Dr 1  64 EA          stz BASIC_STARTED   ; BASIC has not been started
+00004Fr 1  64 EB          stz MACHINE_CONFIG  ; no peripheral is initialized yet
+000051r 1  64 E3          stz RAM_SIZE_L      ; POST will initialize this
+000053r 1  64 E4          stz RAM_SIZE_H
+000055r 1               
+000055r 1                 ; ZP and stack are good - establish the stack pointer and carry on.
+000055r 1  A2 FF          ldx #$FF          ; A2 FF
+000057r 1  9A             txs               ; 9A      set the stack start
 000058r 1  20 rr rr       jsr post          ; do the rest of POST (RAM walk)
-00005Br 1  20 rr rr       jsr init_serial   ; init ACIA # IO_8
+00005Br 1  20 rr rr       jsr serial_init   ; init ACIA # IO_8
 00005Er 1  20 rr rr       jsr via_init      ; detect + init VIA1 (sets carry if present)
 000061r 1                 ; Print startup message (BIOS banner)
 000061r 1  A9 rr          lda #<startupMessage
@@ -468,29 +467,24 @@ Current file: BIOS.s
 00006Cr 1                 ; If VIA1 was detected, announce it under the banner: "## VIA1 on $7F20"
 00006Cr 1  20 rr rr       jsr via_report
 00006Fr 1  58             cli               ; enable IRQs now that handlers/VIA are set up
-000070r 1  4C rr rr       jmp WOZMON_COLD   ; go to the monitor
+000070r 1  4C rr rr       jmp WOZMON_COLD   ; BIOS starts with the monitor
 000073r 1               
 000073r 1               
 000073r 1               
 000073r 1               ; ### Subrutines ###
 000073r 1               
 000073r 1               ; post_fail:
-000073r 1               ; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
-000073r 1               ; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
-000073r 1               ; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
-000073r 1               ; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
-000073r 1               ; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
+000073r 1               ; Reached when the early ZP, Stack, or POST Mem test fails.
+000073r 1               ; Serial is NOT up yet and we have no onboard failure indicator (LED/beeper)
+000073r 1               ; in rev 1.6 of the SBC hardware so as a placeholder, we signal the fault on
+000073r 1               ; the DATA BUS: repeatedly writing $01 then $00 to a Zero Page location drives
+000073r 1               ; D0 with a steady ~1 kHz pattern (D1-D7 idle low) that can be caught with a scope
 000073r 1               ; This never returns - a failed ZP/stack test is terminal.
-000073r 1               ; Placed right before the POST tests so the reset-vector ZP/stack checks can
-000073r 1               ; reach it with a direct conditional branch (no trampoline needed).
 000073r 1               ;
-000073r 1               ; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
-000073r 1               ; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
-000073r 1               ; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
-000073r 1               ; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
-000073r 1               ; important for a fault beacon; this just lands it near 1 kHz on a probe.
-000073r 1               ; Uses only the A and X registers - no ZP variables, no stack (it may be
-000073r 1               ; entered before the stack is trusted).
+000073r 1               ; The position of this routine is critical so the ZP/stack and POST checks can
+000073r 1               ; reach it with a branch (6502 branch is -128 to +127 bytes from the memory location
+000073r 1               ; immediately following the branch instruction.
+000073r 1               ; Routine uses no ZP variables and no stack since those may have failed.
 000073r 1               post_fail:
 000073r 1  A9 01          lda #$01
 000075r 1  85 00          sta ZP_START          ; write 1 -> D0 high on the bus
@@ -501,57 +495,51 @@ Current file: BIOS.s
 00007Cr 1  A9 00          lda #$00
 00007Er 1  85 00          sta ZP_START          ; write 0 -> D0 low on the bus
 000080r 1  A2 B6          ldx #$B6
-000082r 1               @fl:
+000082r 1               @fl:                    ; this is badly written will tighten it up once I test on the board
 000082r 1  CA             dex
 000083r 1  D0 FD          bne @fl
 000085r 1  80 EC          bra post_fail         ; loop forever (fault beacon)
 000087r 1               
 000087r 1               ; post:
 000087r 1               ; Power on Self Test
-000087r 1               ; post runs after the early ZP/stack test, so the
-000087r 1               ; stack is already trusted here and we may use subroutines/registers freely.
+000087r 1               ; post runs after the early ZP/stack test, so we can trust both
 000087r 1               post:
-000087r 1                 ; --- Walk RAM from $0200 up, store top of RAM in RAM_SIZE ---
+000087r 1                 ; Walk RAM from $0200 up, store top of RAM in RAM_SIZE
+000087r 1                 ; RAM_SIZE holds the first non-RAM address (top usable RAM address + 1).
 000087r 1                 ; Checkerboard-test each byte ($55 then $AA) and read it back. Stop at the
-000087r 1                 ; first byte that fails or when we reach the I/O space at $7F00 (we must
-000087r 1                 ; NOT write into $7F00+ which would hit real hardware registers). RAM_SIZE
-000087r 1                 ; holds the first non-RAM address, i.e. (top usable RAM address + 1).
-000087r 1                 ; This is destructive, which is fine at cold boot (RAM is undefined anyway).
+000087r 1                 ; first byte that fails or when we reach the I/O space at $7F00.
+000087r 1                 POST_PTR = $10        ; Use ZP for RAM-walk pointer, 2 bytes
 000087r 1  A9 00          lda #$00
-000089r 1  85 E9          sta POST_PTR          ; pointer low  = $00
+000089r 1  85 10          sta POST_PTR          ; pointer low  = $00
 00008Br 1  A9 02          lda #$02
-00008Dr 1  85 EA          sta POST_PTR+1        ; pointer high = $02  -> start at $0200
+00008Dr 1  85 11          sta POST_PTR+1        ; pointer high = $02  -> start at $0200
 00008Fr 1               @ram_walk:
 00008Fr 1                 ; stop once we reach I/O space ($7F00)
-00008Fr 1  A5 EA          lda POST_PTR+1
+00008Fr 1  A5 11          lda POST_PTR+1
 000091r 1  C9 7F          cmp #$7F
 000093r 1  F0 1E          beq @ram_done         ; high byte $7F and low byte $00 -> at $7F00
 000095r 1  A0 00          ldy #0
 000097r 1  A9 55          lda #$55              ; pattern 1
-000099r 1  91 E9          sta (POST_PTR),y
-00009Br 1  B1 E9          lda (POST_PTR),y
+000099r 1  91 10          sta (POST_PTR),y
+00009Br 1  B1 10          lda (POST_PTR),y
 00009Dr 1  C9 55          cmp #$55
 00009Fr 1  D0 12          bne @ram_done         ; readback failed -> end of RAM
 0000A1r 1  A9 AA          lda #$AA              ; pattern 2
-0000A3r 1  91 E9          sta (POST_PTR),y
-0000A5r 1  B1 E9          lda (POST_PTR),y
+0000A3r 1  91 10          sta (POST_PTR),y
+0000A5r 1  B1 10          lda (POST_PTR),y
 0000A7r 1  C9 AA          cmp #$AA
 0000A9r 1  D0 08          bne @ram_done         ; readback failed -> end of RAM
 0000ABr 1                 ; byte good, advance pointer
-0000ABr 1  E6 E9          inc POST_PTR
+0000ABr 1  E6 10          inc POST_PTR
 0000ADr 1  D0 E0          bne @ram_walk
-0000AFr 1  E6 EA          inc POST_PTR+1
+0000AFr 1  E6 11          inc POST_PTR+1
 0000B1r 1  80 DC          bra @ram_walk
 0000B3r 1               @ram_done:
 0000B3r 1                 ; POST_PTR now points one past the last good RAM byte -> store as RAM_SIZE
-0000B3r 1  A5 E9          lda POST_PTR
+0000B3r 1  A5 10          lda POST_PTR
 0000B5r 1  85 E3          sta RAM_SIZE_L
-0000B7r 1  A5 EA          lda POST_PTR+1
+0000B7r 1  A5 11          lda POST_PTR+1
 0000B9r 1  85 E4          sta RAM_SIZE_H
-0000BBr 1               
-0000BBr 1                 ; The TOCKS jiffy clock (VIA1 Timer 1, ~10ms) is not started here. The VIA is on
-0000BBr 1                 ; the external I/O card, so via_init looks for it and starts the timer, right after
-0000BBr 1                 ; the serial port is up (see the reset code), and irq_handler counts the ticks.
 0000BBr 1  60             rts
 0000BCr 1               
 0000BCr 1               ; ### VIA Routines ###
@@ -573,7 +561,7 @@ Current file: BIOS.s
 0000BCr 1               ; clock never runs, instead of whatever the memory tests left there.
 0000BCr 1               ; Overwrites A, X.
 0000BCr 1               via_init:
-0000BCr 1  64 EB          stz VIA_PRESENT       ; assume absent until proven
+0000BCr 1  64 E9          stz VIA_PRESENT       ; assume absent until proven
 0000BEr 1  64 E0          stz TOCKS_L           ; clear the 3-byte TOCKS jiffy counter
 0000C0r 1  64 E1          stz TOCKS_M
 0000C2r 1  64 E2          stz TOCKS_H
@@ -606,16 +594,16 @@ Current file: BIOS.s
 0000F6r 1  8D 2E 7F       sta VIA1_IER
 0000F9r 1                 ; mark present
 0000F9r 1  A9 01          lda #$01
-0000FBr 1  85 EB          sta VIA_PRESENT
+0000FBr 1  85 E9          sta VIA_PRESENT
 0000FDr 1  A9 02          lda #BIOS_CFG_VIA1
-0000FFr 1  04 ED          tsb MACHINE_CONFIG    ; record that VIA1 is initialized
+0000FFr 1  04 EB          tsb MACHINE_CONFIG    ; record that VIA1 is initialized
 000101r 1  38             sec                   ; carry set = present
 000102r 1  60             rts
 000103r 1               @absent:
 000103r 1  9C 22 7F       stz VIA1_DDRB         ; restore a benign DDRB (inputs)
-000106r 1  64 EB          stz VIA_PRESENT
+000106r 1  64 E9          stz VIA_PRESENT
 000108r 1  A9 02          lda #BIOS_CFG_VIA1
-00010Ar 1  14 ED          trb MACHINE_CONFIG    ; make sure the bit is clear
+00010Ar 1  14 EB          trb MACHINE_CONFIG    ; make sure the bit is clear
 00010Cr 1  18             clc                   ; carry clear = absent
 00010Dr 1  60             rts
 00010Er 1               
@@ -624,7 +612,7 @@ Current file: BIOS.s
 00010Er 1               ;   ## VIA1 on $7F20
 00010Er 1               ; Does nothing if the VIA is absent. Overwrites A, Y.
 00010Er 1               via_report:
-00010Er 1  A5 EB          lda VIA_PRESENT
+00010Er 1  A5 E9          lda VIA_PRESENT
 000110r 1  F0 0B          beq @done
 000112r 1  A9 rr          lda #<viaMessage
 000114r 1  85 E7          sta PTR_TX
@@ -636,18 +624,19 @@ Current file: BIOS.s
 00011Er 1               
 00011Er 1               
 00011Er 1               ; ### TOCKS (jiffy clock) ###
+00011Er 1               ; TOCKS are a jiffy like clock that relies on VIA1 Timer 1.
+00011Er 1               ; It generarates one IRQ every ~10ms, these ticks are counted by irq_handler and stored
+00011Er 1               ; the 3-byte in the ZP TOCKS variable
 00011Er 1               
 00011Er 1               ; bios_get_tocks:
-00011Er 1               ; Read the 24-bit TOCKS jiffy clock (one tick every ~10ms, counted by irq_handler).
+00011Er 1               ; Read the 24-bit TOCKS jiffy clock in a safe way. The interrupt can trigger and increment
+00011Er 1               ; TOCKS between two reads of its three bytes if that increment has a carry it will read a
+00011Er 1               ; wrong value. This routine masks the interrupt for the three loads, a few cycles, so the
+00011Er 1               ; three bytes are from the same moment.
+00011Er 1               ; The clock only runs if VIA1 was found (BIOS_CFG_VIA1 in MACHINE_CONFIG).
+00011Er 1               ;
 00011Er 1               ; Returns A = low byte, X = middle byte, Y = high byte.
-00011Er 1               ; The interrupt can increment TOCKS between two reads of its three bytes, so a program
-00011Er 1               ; that reads $E0-$E2 itself can get a wrong value (the low byte from before a carry and
-00011Er 1               ; the middle byte from after it, which is off by 256 ticks). This routine masks the interrupt
-00011Er 1               ; for the three loads, a few cycles, so the three bytes are from the same moment. A tick that
-00011Er 1               ; arrives in the meantime is not lost: the VIA keeps its flag and the interrupt runs right after.
-00011Er 1               ; Works whether the caller has interrupts enabled or not: the I flag is restored. All flags
-00011Er 1               ; come back as the caller had them, they do not reflect the values returned.
-00011Er 1               ; The clock only runs if VIA1 was found (BIOS_CFG_VIA1 in MACHINE_CONFIG), otherwise it reads 0.
+00011Er 1               ;
 00011Er 1               bios_get_tocks:
 00011Er 1  08             php               ; keep the caller's interrupt state
 00011Fr 1  78             sei               ; no tick between the three loads
@@ -661,7 +650,7 @@ Current file: BIOS.s
 000128r 1               ; Initializes the on board serial interface
 000128r 1               ; Reset and set config for the ACIA. Init the RX buffer pointer.
 000128r 1               ; Sets BIOS_CFG_SERIAL in MACHINE_CONFIG.
-000128r 1               init_serial:
+000128r 1               serial_init:
 000128r 1  A9 03          lda #ACIA_RESET
 00012Ar 1  8D 72 7F       sta ACIA_CONTROL
 00012Dr 1  A9 16          lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options
@@ -671,7 +660,7 @@ Current file: BIOS.s
 000134r 1  85 E5          sta PTR_RD_RX_BUF
 000136r 1  85 E6          sta PTR_WR_RX_BUF
 000138r 1  A9 01          lda #BIOS_CFG_SERIAL
-00013Ar 1  04 ED          tsb MACHINE_CONFIG  ; record that the serial port is initialized
+00013Ar 1  04 EB          tsb MACHINE_CONFIG  ; record that the serial port is initialized
 00013Cr 1  60             rts
 00013Dr 1               
 00013Dr 1               
@@ -828,7 +817,7 @@ Current file: BIOS.s
 0001CBr 1  4C rr rr       jmp WARMWOZ
 0001CEr 1               @basic:
 0001CEr 1                 ; BASIC resets the stack itself, so the return address of the JSR to cmd_dispatch can stay.
-0001CEr 1  A5 EC          lda BASIC_STARTED ; has BASIC been started since reset?
+0001CEr 1  A5 EA          lda BASIC_STARTED ; has BASIC been started since reset?
 0001D0r 1  F0 03          beq @basic_cold   ; no, its variables are not set up, a warm start would crash
 0001D2r 1  4C rr rr       jmp J_BASIC_WARM  ; yes, back to the READY prompt, program and variables kept
 0001D5r 1               @basic_cold:
@@ -1194,7 +1183,7 @@ Current file: BIOS.s
 000000r 2                               ; 'MONITOR' segment memory area by 1 byte
 000000r 2                               ; if you are running this independently of the bios you
 000000r 2                               ; will need to uncomment the next line or 2 lines if you fancy a CR + LF
-000000r 2                               ; JSR     init_serial    ; Initialize ACIA
+000000r 2                               ; JSR     serial_init    ; Initialize ACIA
 000000r 2                               ; JSR     out_crlf       ; send CR+LF
 000000r 2  A9 1B        WARMWOZ:        LDA     #$1B           ; Begin with escape.
 000002r 2               NOTCR:

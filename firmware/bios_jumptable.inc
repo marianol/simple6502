@@ -35,7 +35,7 @@ BIOS_GET_TOCKS  = BIOS_JUMPTABLE + 12*3  ; $8024 read the TOCKS jiffy clock: A =
 ; found and initialized the peripheral. The BIOS reset clears the byte, so only the peripherals
 ; that are really there are set. Add a bit here when a peripheral is supported.
 ; (zeropage.s declares the byte as MACHINE_CONFIG, bios_header.s checks that they agree.)
-BIOS_MACHINE_CONFIG = $ED
+BIOS_MACHINE_CONFIG = $EB
 BIOS_CFG_SERIAL = %00000001         ; bit 0: on board serial port (ACIA) initialized
 BIOS_CFG_VIA1   = %00000010         ; bit 1: VIA 1 found and initialized (the TOCKS clock runs)
 BIOS_CFG_VIA2   = %00000100         ; bit 2: VIA 2 (reserved, nothing sets it yet)

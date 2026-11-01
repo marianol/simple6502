@@ -14,9 +14,11 @@ Zero page variables are declared in these files with `.res`, never as `NAME = $x
 * Each block is anchored with `.org` at a fixed address and its variables follow each other with `.res`. Blocks do not move: programs rely on the addresses (`BIOS_SERIAL_STR` reads `PTR_TX`, WozMon needs `XAML/XAMH`, `STL/STH` and `L/H` adjacent).
 * Each block ends with an `.assert` that fails the build if the block grows into the next one. `zeropage.s` checks the BIOS blocks against the range reserved for BASIC, `zeropage_basic.s` checks that the BASIC block ends inside it.
 * `basic/msbasic.s` includes `zeropage.s` too. That is how BASIC gets `RAM_SIZE` (its `MEMSIZ` is a name for it) and the reserved range, so the same map is checked in both builds. The linker sees the BIOS bytes twice in the `ZEROPAGE` segment (once per object), which only counts against the 256 byte limit while linking, it is not real RAM use.
+* A variable is declared only if more than one routine uses it, or if programs are meant to read or share it. A value that a single routine uses, and that the routine initializes itself, is not declared or reserved: the routine takes a byte of scratch.
+* Zero page that is not declared in these files is scratch. It is marked `free` in the table, and any program running on the machine can use it. The program is responsible for not colliding with the other things it uses.
 * To add a BIOS variable: add it with `.res` at the end of the block it belongs to (or a new block in a free range), then update this table.
 
-Status: `BASIC` = BASIC only, `BIOS` = BIOS only, `SHARED` = shared on purpose, `OVERLAP` = BASIC and BIOS share bytes by accident, `free` = unused.
+Status: `BASIC` = BASIC only, `BIOS` = BIOS only, `SHARED` = shared on purpose, `OVERLAP` = BASIC and BIOS share bytes by accident, `free` = not declared, scratch that programs can use.
 
 ## Overlaps
 
@@ -117,11 +119,10 @@ None. BASIC's block is $4A-$DD (`BASIC_ZP_START` and `BASIC_ZP_END` in `zeropage
 | $E5 | 1 |  | PTR_RD_RX_BUF | BIOS |  |
 | $E6 | 1 |  | PTR_WR_RX_BUF | BIOS |  |
 | $E7-$E8 | 2 |  | PTR_TX | BIOS | string pointer |
-| $E9-$EA | 2 |  | POST_PTR | BIOS | POST RAM walk |
-| $EB | 1 |  | VIA_PRESENT | BIOS | non-zero if VIA1 was detected and initialized |
-| $EC | 1 | BASIC_STARTED | BASIC_STARTED | SHARED | non-zero once BASIC has been cold started. The BIOS reset clears it, BASIC's cold start sets it. The monitor `X` command warm starts BASIC only if it is set. |
-| $ED | 1 |  | MACHINE_CONFIG | BIOS | one bit per peripheral the BIOS initialized (bit 0 serial, bit 1 VIA1, bit 2 VIA2). Programs may read it, see `bios_jumptable.inc` |
-| $EE-$FF | 18 |  |  | free |  |
+| $E9 | 1 |  | VIA_PRESENT | BIOS | non-zero if VIA1 was detected and initialized |
+| $EA | 1 | BASIC_STARTED | BASIC_STARTED | SHARED | non-zero once BASIC has been cold started. The BIOS reset clears it, BASIC's cold start sets it. The monitor `X` command warm starts BASIC only if it is set. |
+| $EB | 1 |  | MACHINE_CONFIG | BIOS | one bit per peripheral the BIOS initialized (bit 0 serial, bit 1 VIA1, bit 2 VIA2). Programs may read it, see `bios_jumptable.inc` |
+| $EC-$FF | 20 |  |  | free |  |
 
 ## What the Zxx variables do
 
@@ -139,7 +140,7 @@ These have no descriptive name in the MS BASIC source. Descriptions come from re
 ## Totals
 
 * BASIC uses 150 bytes ($4A-$DD in one block, plus MEMSIZ at $E3-$E4, shared with the BIOS RAM_SIZE).
-* BIOS uses 36 bytes.
-* 72 bytes are free in both.
+* BIOS uses 34 bytes.
+* 74 bytes are free in both.
 * `BASIC_ZP_START` = $4A (in `zeropage.s`). The variables in `zeropage_basic.s` follow each other from there.
 * `STACK_TOP` ($FA) is a stack page offset, not a zero page address.

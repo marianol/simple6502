@@ -15,25 +15,22 @@
 ;.org $8000 
 
 ; ## BIOS Jump Table (public ABI) ##
-; The fixed-address jump table at the start of ROM is in bios_header.s (the HEADER
-; segment). Its entries are APPEND-ONLY, read the contract at the top of that file.
-; bios_jumptable.inc has the public equates and is checked against the table.
+; The fixed-address jump table at the start of ROM is in bios_header.s
 .include "bios_jumptable.inc"
 .include "bios_header.s"
 
 ; ## BIOS Start ##
 .segment "BIOS"  
-  .byte "simple6502 BIOS Ver: "
+  ; Write an identifier in the rom so it can be identified when dumping the ROM
+  .byte "BIOS-simple6502-v"
   .byte VERSION
 
-; Reset Vector Start 
+; Reset Vector Start - BIOS Cold Start
 reset:
   sei               ; 78      disable interrupts 
   cld               ; D8      turn decimal mode off
-
-  ; --- Memory Check: Zero Page and Stack (Page 1) ---
+  ; Memory Check: Zero Page and Stack (Page 1)
   ; These run BEFORE the stack is used so we can test Page 1
-  ; Using ONLY the A and X and immediate values - no ZP variables, no stack. 
   ; A mismatch jumps to post_fail.
 
   ; Test Zero Page ($0000-$00FF): checkerboard $55 then $AA
@@ -53,7 +50,7 @@ reset:
   inx
   bne @zp_aa
 
-  ; Test Stack page / Page 1 ($0100-$01FF): safe to clobber, nothing pushed yet
+  ; Test Stack page / Page 1 ($0100-$01FF): checkerboard $55 then $AA
   ldx #0
 @sp_55:
   lda #$55
@@ -70,13 +67,17 @@ reset:
   inx
   bne @sp_aa
 
+  ; Initialize ZP veriables, the ZP test left $AA
+  stz BASIC_STARTED   ; BASIC has not been started 
+  stz MACHINE_CONFIG  ; no peripheral is initialized yet
+  stz RAM_SIZE_L      ; POST will initialize this
+  stz RAM_SIZE_H
+
   ; ZP and stack are good - establish the stack pointer and carry on.
   ldx #$FF          ; A2 FF
   txs               ; 9A      set the stack start
-  stz BASIC_STARTED ; BASIC has not been started (the ZP test left $AA here)
-  stz MACHINE_CONFIG ; no peripheral is initialized yet, init_serial and via_init set their bits
   jsr post          ; do the rest of POST (RAM walk)
-  jsr init_serial   ; init ACIA # IO_8
+  jsr serial_init   ; init ACIA # IO_8
   jsr via_init      ; detect + init VIA1 (sets carry if present)
   ; Print startup message (BIOS banner)
   lda #<startupMessage 
@@ -87,29 +88,24 @@ reset:
   ; If VIA1 was detected, announce it under the banner: "## VIA1 on $7F20"
   jsr via_report
   cli               ; enable IRQs now that handlers/VIA are set up
-  jmp WOZMON_COLD   ; go to the monitor
+  jmp WOZMON_COLD   ; BIOS starts with the monitor
 
 
 
 ; ### Subrutines ### 
 
 ; post_fail:
-; Reached when the early ZP or Stack test fails. Serial is NOT up yet and we
-; have no onboard failure indicator (LED/beeper) in rev 1.6 - that hardware is
-; TODO. As a placeholder, we signal the fault on the DATA BUS: repeatedly
-; writing $01 then $00 to a Zero Page location drives D0 with a steady ~1 kHz
-; pattern (D1-D7 idle low) that can be caught with a scope or logic probe.
+; Reached when the early ZP, Stack, or POST Mem test fails. 
+; Serial is NOT up yet and we have no onboard failure indicator (LED/beeper) 
+; in rev 1.6 of the SBC hardware so as a placeholder, we signal the fault on 
+; the DATA BUS: repeatedly writing $01 then $00 to a Zero Page location drives 
+; D0 with a steady ~1 kHz pattern (D1-D7 idle low) that can be caught with a scope 
 ; This never returns - a failed ZP/stack test is terminal.
-; Placed right before the POST tests so the reset-vector ZP/stack checks can
-; reach it with a direct conditional branch (no trampoline needed).
 ;
-; Timing: target ~1 kHz (1 ms period, 500 us per half) at 1.8432 MHz
-; (~922 cycles per half-period). Each half is a write (~5 cyc) plus the
-; delay loop dex/bne (5 cyc per iteration): X=$B6 (182) -> ~910 loop cycles
-; + overhead ~= 920 cycles ~= 499 us -> ~1.0 kHz. Exact frequency is not
-; important for a fault beacon; this just lands it near 1 kHz on a probe.
-; Uses only the A and X registers - no ZP variables, no stack (it may be
-; entered before the stack is trusted).
+; The position of this routine is critical so the ZP/stack and POST checks can
+; reach it with a branch (6502 branch is -128 to +127 bytes from the memory location
+; immediately following the branch instruction.
+; Routine uses no ZP variables and no stack since those may have failed.
 post_fail:
   lda #$01
   sta ZP_START          ; write 1 -> D0 high on the bus
@@ -120,22 +116,20 @@ post_fail:
   lda #$00
   sta ZP_START          ; write 0 -> D0 low on the bus
   ldx #$B6
-@fl:
+@fl:                    ; this is badly written will tighten it up once I test on the board
   dex
   bne @fl
   bra post_fail         ; loop forever (fault beacon)
 
 ; post:
 ; Power on Self Test
-; post runs after the early ZP/stack test, so the
-; stack is already trusted here and we may use subroutines/registers freely.
+; post runs after the early ZP/stack test, so we can trust both 
 post: 
-  ; --- Walk RAM from $0200 up, store top of RAM in RAM_SIZE ---
+  ; Walk RAM from $0200 up, store top of RAM in RAM_SIZE 
+  ; RAM_SIZE holds the first non-RAM address (top usable RAM address + 1).
   ; Checkerboard-test each byte ($55 then $AA) and read it back. Stop at the
-  ; first byte that fails or when we reach the I/O space at $7F00 (we must
-  ; NOT write into $7F00+ which would hit real hardware registers). RAM_SIZE
-  ; holds the first non-RAM address, i.e. (top usable RAM address + 1).
-  ; This is destructive, which is fine at cold boot (RAM is undefined anyway).
+  ; first byte that fails or when we reach the I/O space at $7F00. 
+  POST_PTR = $10        ; Use ZP for RAM-walk pointer, 2 bytes
   lda #$00
   sta POST_PTR          ; pointer low  = $00
   lda #$02
@@ -167,10 +161,6 @@ post:
   sta RAM_SIZE_L
   lda POST_PTR+1
   sta RAM_SIZE_H
-
-  ; The TOCKS jiffy clock (VIA1 Timer 1, ~10ms) is not started here. The VIA is on
-  ; the external I/O card, so via_init looks for it and starts the timer, right after
-  ; the serial port is up (see the reset code), and irq_handler counts the ticks.
   rts
 
 ; ### VIA Routines ###
@@ -255,18 +245,19 @@ via_report:
 
 
 ; ### TOCKS (jiffy clock) ###
+; TOCKS are a jiffy like clock that relies on VIA1 Timer 1. 
+; It generarates one IRQ every ~10ms, these ticks are counted by irq_handler and stored
+; the 3-byte in the ZP TOCKS variable
 
 ; bios_get_tocks:
-; Read the 24-bit TOCKS jiffy clock (one tick every ~10ms, counted by irq_handler).
+; Read the 24-bit TOCKS jiffy clock in a safe way. The interrupt can trigger and increment 
+; TOCKS between two reads of its three bytes if that increment has a carry it will read a 
+; wrong value. This routine masks the interrupt for the three loads, a few cycles, so the 
+; three bytes are from the same moment.
+; The clock only runs if VIA1 was found (BIOS_CFG_VIA1 in MACHINE_CONFIG).
+;
 ; Returns A = low byte, X = middle byte, Y = high byte.
-; The interrupt can increment TOCKS between two reads of its three bytes, so a program
-; that reads $E0-$E2 itself can get a wrong value (the low byte from before a carry and
-; the middle byte from after it, which is off by 256 ticks). This routine masks the interrupt
-; for the three loads, a few cycles, so the three bytes are from the same moment. A tick that
-; arrives in the meantime is not lost: the VIA keeps its flag and the interrupt runs right after.
-; Works whether the caller has interrupts enabled or not: the I flag is restored. All flags
-; come back as the caller had them, they do not reflect the values returned.
-; The clock only runs if VIA1 was found (BIOS_CFG_VIA1 in MACHINE_CONFIG), otherwise it reads 0.
+;
 bios_get_tocks:
   php               ; keep the caller's interrupt state
   sei               ; no tick between the three loads
@@ -280,7 +271,7 @@ bios_get_tocks:
 ; Initializes the on board serial interface 
 ; Reset and set config for the ACIA. Init the RX buffer pointer.
 ; Sets BIOS_CFG_SERIAL in MACHINE_CONFIG.
-init_serial:
+serial_init:
   lda #ACIA_RESET
   sta ACIA_CONTROL
   lda #ACIA_CFG_28    ; 28800 8,N,1, see defines file for options

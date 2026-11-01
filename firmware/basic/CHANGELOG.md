@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The cold start sets `BASIC_STARTED` (`init.s`, the zero page flag from `../zeropage.s`) just
   before it enters the prompt, so the monitor `X` command knows a warm start is safe.
 ### Changed
+- `ref/simple6502_ref.bin` was rebuilt for BIOS 0.10.0: one byte differs, the zero page operand of
+  `sta BASIC_STARTED` in `init.s` ($EC to $EA), because the BIOS moved the flag down 2 bytes.
 - The prompt is `READY.` instead of `OK` (`QT_OK` is now `QT_READY` in `message.s`).
 - `ref/simple6502_ref.bin` was rebuilt for these changes. It was checked by running BASIC in
   the emulator: the statements and functions whose token numbers moved, a program with

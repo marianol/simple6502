@@ -13,14 +13,22 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   A = low byte, X = middle, Y = high. The interrupt can increment TOCKS between two reads of its
   bytes, which makes a program reading $E0-$E2 itself see a value off by 256 ticks. The routine masks
   interrupts for the three loads and restores the caller's I flag.
-- Machine configuration byte, `MACHINE_CONFIG` ($ED, `BIOS_MACHINE_CONFIG` in `bios_jumptable.inc`):
+- Machine configuration byte, `MACHINE_CONFIG` ($EB, `BIOS_MACHINE_CONFIG` in `bios_jumptable.inc`):
   one bit per peripheral, set when the BIOS found and initialized it. Bit 0 `BIOS_CFG_SERIAL`
-  (set by `init_serial`), bit 1 `BIOS_CFG_VIA1` (set by `via_init` when it finds the VIA, cleared
+  (set by `serial_init`), bit 1 `BIOS_CFG_VIA1` (set by `via_init` when it finds the VIA, cleared
   if not), bit 2 `BIOS_CFG_VIA2` reserved. The reset clears the byte. The linker checks that the
   address in `zeropage.s` and in the include agree.
 
 ### Changed
 
+- `init_serial` is now `serial_init`. The ROM identification string at the start of the BIOS is
+  `BIOS-simple6502-v<version>` (it was `simple6502 BIOS Ver: <version>`). The reset also clears
+  `RAM_SIZE` before the POST sets it.
+- The POST's RAM walk pointer is a scratch local to `post`, no longer declared in `zeropage.s`
+  (a value only one routine uses, which it initializes itself, is not declared). That moved the
+  variables after it down by 2: `VIA_PRESENT` is at $E9, `BASIC_STARTED` at $EA and
+  `MACHINE_CONFIG` at $EB (`BIOS_MACHINE_CONFIG` follows). `docs/ZEROPAGE_MAP.md` now says that zero
+  page that is not declared is scratch, free for programs to use.
 - The TOCKS jiffy clock is verified in the emulator, which now delivers VIA interrupts.
   This replaces the note in 0.7.0 that said it could not be tested. With the tick running:
   `TOCKS` counts up during the monitor, an Intel HEX `L` load, a loaded program, `S` save,
@@ -42,6 +50,10 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Tested
 
+- After the zero page change (emulator, with the VIA): the ROM reaches the monitor and prints the new banner,
+  `RAM_SIZE` is $7F00 (the POST RAM walk works with its scratch pointer), `VIA_PRESENT`, `BASIC_STARTED` and
+  `MACHINE_CONFIG` read 01, 00 and 03 at their new addresses, and `X`, `MONITOR`, `X` start BASIC, return to
+  the monitor and warm start BASIC without the banner.
 - In the emulator, with the VIA: a program that calls `BIOS_GET_TOCKS` 6000 times while the tick runs
   never sees the clock go backwards, sees the carry from the low to the middle byte (the clock is
   set to $0000FE first) and gets A, X and Y in the right order; the I flag is kept when it is set

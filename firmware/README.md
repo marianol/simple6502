@@ -60,7 +60,7 @@ Without a VIA the clock does not run and reads 0.
 
 ### Machine configuration byte
 
-`BIOS_MACHINE_CONFIG` ($ED, zero page) has one bit per peripheral, set when the BIOS found and
+`BIOS_MACHINE_CONFIG` ($EB, zero page) has one bit per peripheral, set when the BIOS found and
 initialized it. The reset clears it, so only what is really there is set. Programs can read it
 to see what the machine has. The bit names are in `bios_jumptable.inc`:
 

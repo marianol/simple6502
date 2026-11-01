@@ -36,7 +36,7 @@ WOZMON:
                 ; 'MONITOR' segment memory area by 1 byte
                 ; if you are running this independently of the bios you
                 ; will need to uncomment the next line or 2 lines if you fancy a CR + LF
-                ; JSR     init_serial    ; Initialize ACIA
+                ; JSR     serial_init    ; Initialize ACIA
                 ; JSR     out_crlf       ; send CR+LF
 WARMWOZ:        LDA     #$1B           ; Begin with escape. 
 NOTCR:

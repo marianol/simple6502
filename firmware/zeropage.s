@@ -1,11 +1,11 @@
 ; simple6502 zero page map
 ;
-; This is the one place where zero page variables are declared. Do NOT add
-; "NAME = $xx" equates for zero page variables to a defines file: declare the
-; variable here with .res inside the block it belongs to. That way the
-; assembler allocates the bytes, a block that grows is caught by the .assert
+; This is the one place where zero page variables are declared. ZP variables
+; are declared here, reserving the space with .res.
+; A block that grows over the next one is caught by the .assert
 ; at the end of the block, and the whole map can be read in one file.
 ; See docs/ZEROPAGE_MAP.md for the full map with the BASIC variables.
+; Zero page that is not declared here is scratch, free for any program to use.
 ;
 ; Layout rules:
 ;  - Each block is anchored with .org at a FIXED address and its variables
@@ -27,7 +27,7 @@
 BASIC_ZP_START = $4A
 BASIC_ZP_END   = $DD
 
-.feature org_per_seg
+.feature org_per_seg    ; enable segment-Local Scope
 .zeropage
 
 ; ----------------------------------------------------------------------------
@@ -102,11 +102,11 @@ SR_REG:
 .assert * <= BASIC_ZP_START, error, "zero page: register print block runs into the BASIC variables"
 
 ; ----------------------------------------------------------------------------
-; BASIC_ZP_START-BASIC_ZP_END: reserved for BASIC, see the top of this file.
+; BASIC_ZP_START-BASIC_ZP_END: reserved for BASIC.
 ; ----------------------------------------------------------------------------
 
 ; ----------------------------------------------------------------------------
-; $E0-$ED BIOS system variables
+; $E0-$EB BIOS system variables
 ; ----------------------------------------------------------------------------
 .org $E0
 TOCKS:                  ; Jiffy-like clock, 3 bytes, ~10ms per tick
@@ -130,8 +130,6 @@ PTR_TX_L:
   .res 1
 PTR_TX_H:
   .res 1
-POST_PTR:               ; POST RAM-walk pointer, 2 bytes
-  .res 2
 VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
   .res 1
 BASIC_STARTED:          ; non-zero once BASIC has been cold started. The BIOS reset clears it and
