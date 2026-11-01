@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.9.0"   ; Define the version number
+.define VERSION "0.10.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
@@ -74,6 +74,7 @@ reset:
   ldx #$FF          ; A2 FF
   txs               ; 9A      set the stack start
   stz BASIC_STARTED ; BASIC has not been started (the ZP test left $AA here)
+  stz MACHINE_CONFIG ; no peripheral is initialized yet, init_serial and via_init set their bits
   jsr post          ; do the rest of POST (RAM walk)
   jsr init_serial   ; init ACIA # IO_8
   jsr via_init      ; detect + init VIA1 (sets carry if present)
@@ -167,12 +168,9 @@ post:
   lda POST_PTR+1
   sta RAM_SIZE_H
 
-  ; --- VIA1 Timer 1 periodic tick (TOCKS jiffy clock) ---
-  ; STUB: left for when the VIA routines are implemented. This will configure
-  ; VIA1 Timer 1 for a ~10ms periodic IRQ and the IRQ handler will increment
-  ; the 3-byte TOCKS counter. The VIA is on the external I/O card (not onboard
-  ; in rev 1.6), so this stays a stub for now.
-  nop
+  ; The TOCKS jiffy clock (VIA1 Timer 1, ~10ms) is not started here. The VIA is on
+  ; the external I/O card, so via_init looks for it and starts the timer, right after
+  ; the serial port is up (see the reset code), and irq_handler counts the ticks.
   rts
 
 ; ### VIA Routines ###
@@ -189,9 +187,15 @@ post:
 ;
 ; Sets VIA_PRESENT (and returns carry set) if the VIA responded; clears both
 ; otherwise. Leaves IRQs enabled on the VIA only when present.
+; Also sets (or clears) BIOS_CFG_VIA1 in MACHINE_CONFIG.
+; TOCKS is cleared first of all, so it reads 0 even when there is no VIA and the
+; clock never runs, instead of whatever the memory tests left there.
 ; Overwrites A, X.
 via_init:
   stz VIA_PRESENT       ; assume absent until proven
+  stz TOCKS_L           ; clear the 3-byte TOCKS jiffy counter
+  stz TOCKS_M
+  stz TOCKS_H
   ; --- presence check on DDRB ---
   lda #$55
   sta VIA1_DDRB
@@ -205,10 +209,6 @@ via_init:
   lda #$00
   sta VIA1_DDRB         ; leave Port B as inputs (benign default)
   sta VIA1_DDRA         ; leave Port A as inputs too
-  ; clear the 3-byte TOCKS jiffy counter
-  stz TOCKS_L
-  stz TOCKS_M
-  stz TOCKS_H
   ; disable all VIA interrupt sources first
   lda #VIA_IER_CLR_ALL
   sta VIA1_IER
@@ -226,11 +226,15 @@ via_init:
   ; mark present
   lda #$01
   sta VIA_PRESENT
+  lda #BIOS_CFG_VIA1
+  tsb MACHINE_CONFIG    ; record that VIA1 is initialized
   sec                   ; carry set = present
   rts
 @absent:
   stz VIA1_DDRB         ; restore a benign DDRB (inputs)
   stz VIA_PRESENT
+  lda #BIOS_CFG_VIA1
+  trb MACHINE_CONFIG    ; make sure the bit is clear
   clc                   ; carry clear = absent
   rts
 
@@ -250,9 +254,32 @@ via_report:
   rts
 
 
+; ### TOCKS (jiffy clock) ###
+
+; bios_get_tocks:
+; Read the 24-bit TOCKS jiffy clock (one tick every ~10ms, counted by irq_handler).
+; Returns A = low byte, X = middle byte, Y = high byte.
+; The interrupt can increment TOCKS between two reads of its three bytes, so a program
+; that reads $E0-$E2 itself can get a wrong value (the low byte from before a carry and
+; the middle byte from after it, which is off by 256 ticks). This routine masks the interrupt
+; for the three loads, a few cycles, so the three bytes are from the same moment. A tick that
+; arrives in the meantime is not lost: the VIA keeps its flag and the interrupt runs right after.
+; Works whether the caller has interrupts enabled or not: the I flag is restored. All flags
+; come back as the caller had them, they do not reflect the values returned.
+; The clock only runs if VIA1 was found (BIOS_CFG_VIA1 in MACHINE_CONFIG), otherwise it reads 0.
+bios_get_tocks:
+  php               ; keep the caller's interrupt state
+  sei               ; no tick between the three loads
+  lda TOCKS_L
+  ldx TOCKS_M
+  ldy TOCKS_H
+  plp               ; back to the caller's interrupt state
+  rts
+
 ; ### Serial Routines ###
 ; Initializes the on board serial interface 
-; Reset and set config for the ACIA. Init the RX buffer pointer
+; Reset and set config for the ACIA. Init the RX buffer pointer.
+; Sets BIOS_CFG_SERIAL in MACHINE_CONFIG.
 init_serial:
   lda #ACIA_RESET
   sta ACIA_CONTROL
@@ -262,6 +289,8 @@ init_serial:
   lda #0
   sta PTR_RD_RX_BUF
   sta PTR_WR_RX_BUF
+  lda #BIOS_CFG_SERIAL
+  tsb MACHINE_CONFIG  ; record that the serial port is initialized
   rts
 
 
@@ -685,10 +714,15 @@ eofRec:
 
 ; # IRQ Handler
 ; Services VIA1 Timer 1 (the ~10ms tick) by incrementing the 3-byte TOCKS
-; jiffy counter. Only A is used, so only A is preserved. Other sources (ACIA
-; RX, etc.) can be added here later; unrecognised IRQs simply return.
+; jiffy counter. Other sources (ACIA RX, etc.) can be added here later;
+; unrecognised IRQs simply return.
+; A, X and Y are saved on entry and restored before the RTI, whatever the handler
+; does, so any source added here can use all three registers. (The flags are
+; restored by the RTI itself.)
 irq_handler:
-    pha                   ; preserve A (X,Y untouched below)
+    pha                   ; save A, X and Y, in this order
+    phx
+    phy
     ; Was it VIA1 Timer 1? Check IFR bit 6. (If the VIA is absent this reads
     ; open bus, but then it is not an IRQ source so the board won't assert IRQ.)
     lda VIA1_IFR
@@ -704,7 +738,9 @@ irq_handler:
     inc TOCKS_H
 @done:
 @not_t1:
-    pla         ; restore A
+    ply                   ; restore Y, X and A, in the reverse order
+    plx
+    pla
     rti         ; 40 
 
 ; # NMI Handler Vector 

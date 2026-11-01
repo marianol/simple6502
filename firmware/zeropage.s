@@ -106,7 +106,7 @@ SR_REG:
 ; ----------------------------------------------------------------------------
 
 ; ----------------------------------------------------------------------------
-; $E0-$EC BIOS system variables
+; $E0-$ED BIOS system variables
 ; ----------------------------------------------------------------------------
 .org $E0
 TOCKS:                  ; Jiffy-like clock, 3 bytes, ~10ms per tick
@@ -137,5 +137,7 @@ VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
 BASIC_STARTED:          ; non-zero once BASIC has been cold started. The BIOS reset clears it and
   .res 1                ; BASIC's cold start sets it. The monitor X command warm starts BASIC only
                         ; if it is set, because a warm start needs what the cold start sets up.
+MACHINE_CONFIG:         ; One bit per peripheral, set when the BIOS found and initialized it. The BIOS
+  .res 1                ; reset clears it. Programs may read it, the bits are BIOS_CFG_* in bios_jumptable.inc.
 .assert * <= $100, error, "zero page: BIOS system block runs past the end of the zero page"
 .assert TOCKS > BASIC_ZP_END, error, "zero page: BIOS system block overlaps the BASIC variables"

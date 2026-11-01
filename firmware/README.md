@@ -42,11 +42,38 @@ equate there too or the build fails.
 | $801B | `BIOS_BASIC_WARM` | Warm start MS BASIC (keeps the program and variables) |
 | $801E | `BIOS_LOAD`       | BASIC `LOAD` (stub for now, just `RTS`)         |
 | $8021 | `BIOS_SAVE`       | BASIC `SAVE` (stub for now, just `RTS`)         |
+| $8024 | `BIOS_GET_TOCKS`  | Read the TOCKS jiffy clock: A = low, X = middle, Y = high |
 
 ```asm
 .include "bios_jumptable.inc"
         lda #'A'
         jsr BIOS_SERIAL_OUT
+```
+
+### Jiffy clock
+
+When the VIA is found, VIA1 Timer 1 interrupts every ~10 ms and `irq_handler` counts the ticks in
+the 3-byte `TOCKS` ($E0-$E2). Use `BIOS_GET_TOCKS` to read it: the interrupt can change `TOCKS`
+between two reads of its bytes, so reading the bytes yourself can give a value that is off by 256
+ticks. The routine reads the three bytes with interrupts masked and keeps your interrupt state.
+Without a VIA the clock does not run and reads 0.
+
+### Machine configuration byte
+
+`BIOS_MACHINE_CONFIG` ($ED, zero page) has one bit per peripheral, set when the BIOS found and
+initialized it. The reset clears it, so only what is really there is set. Programs can read it
+to see what the machine has. The bit names are in `bios_jumptable.inc`:
+
+| Bit | Name              | Set when                                  |
+|-----|-------------------|-------------------------------------------|
+| 0   | `BIOS_CFG_SERIAL` | the on board serial port is initialized   |
+| 1   | `BIOS_CFG_VIA1`   | VIA 1 is found and initialized            |
+| 2   | `BIOS_CFG_VIA2`   | reserved, nothing sets it yet             |
+
+```asm
+        lda BIOS_MACHINE_CONFIG
+        and #BIOS_CFG_VIA1
+        beq no_via
 ```
 
 ## Monitor Commands
@@ -112,6 +139,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.9.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
+**Version 0.10.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

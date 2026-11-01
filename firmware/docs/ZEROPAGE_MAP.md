@@ -120,7 +120,8 @@ None. BASIC's block is $4A-$DD (`BASIC_ZP_START` and `BASIC_ZP_END` in `zeropage
 | $E9-$EA | 2 |  | POST_PTR | BIOS | POST RAM walk |
 | $EB | 1 |  | VIA_PRESENT | BIOS | non-zero if VIA1 was detected and initialized |
 | $EC | 1 | BASIC_STARTED | BASIC_STARTED | SHARED | non-zero once BASIC has been cold started. The BIOS reset clears it, BASIC's cold start sets it. The monitor `X` command warm starts BASIC only if it is set. |
-| $ED-$FF | 19 |  |  | free |  |
+| $ED | 1 |  | MACHINE_CONFIG | BIOS | one bit per peripheral the BIOS initialized (bit 0 serial, bit 1 VIA1, bit 2 VIA2). Programs may read it, see `bios_jumptable.inc` |
+| $EE-$FF | 18 |  |  | free |  |
 
 ## What the Zxx variables do
 
@@ -138,7 +139,7 @@ These have no descriptive name in the MS BASIC source. Descriptions come from re
 ## Totals
 
 * BASIC uses 150 bytes ($4A-$DD in one block, plus MEMSIZ at $E3-$E4, shared with the BIOS RAM_SIZE).
-* BIOS uses 35 bytes.
-* 73 bytes are free in both.
+* BIOS uses 36 bytes.
+* 72 bytes are free in both.
 * `BASIC_ZP_START` = $4A (in `zeropage.s`). The variables in `zeropage_basic.s` follow each other from there.
 * `STACK_TOP` ($FA) is a stack page offset, not a zero page address.

@@ -5,6 +5,60 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0]
+
+### Added
+
+- `BIOS_GET_TOCKS` (jump table slot 12, $8024): reads the 24-bit TOCKS clock as a consistent value,
+  A = low byte, X = middle, Y = high. The interrupt can increment TOCKS between two reads of its
+  bytes, which makes a program reading $E0-$E2 itself see a value off by 256 ticks. The routine masks
+  interrupts for the three loads and restores the caller's I flag.
+- Machine configuration byte, `MACHINE_CONFIG` ($ED, `BIOS_MACHINE_CONFIG` in `bios_jumptable.inc`):
+  one bit per peripheral, set when the BIOS found and initialized it. Bit 0 `BIOS_CFG_SERIAL`
+  (set by `init_serial`), bit 1 `BIOS_CFG_VIA1` (set by `via_init` when it finds the VIA, cleared
+  if not), bit 2 `BIOS_CFG_VIA2` reserved. The reset clears the byte. The linker checks that the
+  address in `zeropage.s` and in the include agree.
+
+### Changed
+
+- The TOCKS jiffy clock is verified in the emulator, which now delivers VIA interrupts.
+  This replaces the note in 0.7.0 that said it could not be tested. With the tick running:
+  `TOCKS` counts up during the monitor, an Intel HEX `L` load, a loaded program, `S` save,
+  BASIC (a `FOR` loop, Ctrl-C, `MONITOR` and `X`) and keyboard input, and none of them is
+  disturbed by the interrupt. Measured against the emulator's cycle counter, one tick is
+  about 18,500 cycles, which is 10 ms (18,432) within the 1% the measurement can resolve.
+- Removed the "STUB" block in `post` that said the timer was still to do. `via_init` starts it.
+- `irq_handler` now saves A, X and Y on entry (`pha`, `phx`, `phy`) and restores them before the
+  `RTI`, so the sources that will be added to it can use any register. Before, it only saved A
+  because it only used A. Checked with a program that keeps known values in A, X and Y in a loop
+  while the tick fires: it stays intact with the real handler, and with a test handler that
+  trashes X and Y but saves them. It breaks with the same test handler without the X/Y save.
+
+### Fixed
+
+- `via_init` clears TOCKS before it looks for the VIA. Before, TOCKS was only cleared when a VIA was
+  found, so without the I/O card it kept what the memory tests left in zero page ($AA) and never ran.
+  It now reads 0.
+
+### Tested
+
+- In the emulator, with the VIA: a program that calls `BIOS_GET_TOCKS` 6000 times while the tick runs
+  never sees the clock go backwards, sees the carry from the low to the middle byte (the clock is
+  set to $0000FE first) and gets A, X and Y in the right order; the I flag is kept when it is set
+  and when it is clear. The config byte is $03 and BASIC still starts.
+- Without a VIA at $7F20: the ROM boots to the monitor, no VIA banner line, TOCKS reads 0, the config
+  byte is $01, and BASIC still starts.
+- The atomic read is by construction (interrupts masked), sampling cannot show it. For a program that
+  reads the three bytes itself, a bad value needs a tick to land in the ~6 cycles between its first and
+  last read (about 1 in 3000 reads) and that tick to carry out of the low byte (1 in 256), so about
+  1 in 800,000 reads. It is rare, but the value then jumps by about 2.5 seconds.
+
+### Not verified
+
+- On the board. The emulator reloads the timer with N cycles, a real 6522 takes N+2, so the
+  `-2` in `VIA_T1_10MS` can only be confirmed with a scope. The I/O card's /IRQ line reaching
+  the CPU is also untested.
+
 ## [0.9.0]
 
 ### Added
