@@ -85,7 +85,7 @@ SPI_setupVIA1:
   lda #%00111111    ; Set bit 6 and 7 as inputs all the rest as outputs
   sta SPI_DDR       ; Set pin directions
   lda #SPI_CS_DIS   ; Set all ~CS to high, CLK, MOSI & MISO low
-  sta SPI_PORT      ; deselect any periferial all CSB high
+  sta SPI_PORT      ; deselect any peripheral all CSB high
 
   ; set port B for the lights
   lda #$ff ; Set all pins on port B to output
@@ -118,12 +118,12 @@ SPI_CS_disable:
 
 ; SPI_SD_init:
 ; Reset sequence for SD card, places it in SPI mode, completes initialization.
-; Initi sequence: 1/ Clock 80 cycles with MOSI and CS high. 2/Send CMD 08 & check we received an 
+; Init sequence: 1/ Clock 80 cycles with MOSI and CS high. 2/Send CMD 08 & check we received an 
 ; GO_IDLE_STATE 3/ Send CMD8 to check if we have a 1.x or 2.x SD card 4/ send proper init 
 ; command per version
 ; Init process is here https://chlazza.nfshost.com/imgs/SDcardInitFlowchart_3.01.png
 ; Return: A > Contains the value of the last SD response, 
-;             $00 on init success, erros othewise
+;             $00 on init success, errors otherwise
 SPI_SD_init:
   ; Card power up the power up time SHOULD have taken care of that ms (~542K Cycles @ 1.8432MHz)
   ; after than an init delay of +74 CLK cycles with the card disabled in 1ms
@@ -161,7 +161,7 @@ SPI_SD_init:
   cmp #$01              ; R1=$01 The card is in idle state and running the initializing process.
   bne SD_init_exit 
   ; Wait for the card to initialize.
-  ; how much... I have no clue, shoud I research, yes. Will do it, nor now :)
+  ; how much... I have no clue, should I research, yes. Will do it, not now :)
   jsr delay_ms          ; 'bout 1.4ms
   jsr delay_ms          ; 'bout 1.4ms
   
@@ -222,7 +222,7 @@ SPI_SD_init:
     jsr SD_send_command   ; send CMD
     ; check for Response: 
     ; ACMD41 starts the initialization process. In the startup sequence, we will continue to 
-    ; send ACMD41 (always preceded by CMD55) until the card is inizialised.s 
+    ; send ACMD41 (always preceded by CMD55) until the card is initialized. 
     ; R1 = $01 = not ready, in idle state 
     ; R1 = $00 = card ready
     jsr SD_wait_result    ; wait for a result
@@ -251,7 +251,7 @@ SPI_SD_init:
 ; SPI_send:
 ; send the byte in the Accumulator via SPI using MODE 0
 ; the CS line must be properly asserted before calling
-; I keeep the set and clear in X and Y precalculated based on Jeff Laughton
+; I keep the set and clear in X and Y precalculated based on Jeff Laughton
 ; Return: A 
 ; Preserves: Y,X
 SPI_send:
@@ -285,7 +285,7 @@ SPI_send:
       inc SPI_PORT  ; clock it
       asl           ; move the next bit to C fill with 0
       bne @sendbyte ; since we have the marker once finish the 8 bits A will be 0
-      ; fallthough, we are finished
+      ; fallthrough, we are finished
 
   @done:
     dec SPI_PORT    ; leave clock low
@@ -349,7 +349,7 @@ SD_send_command:
 
 ; SD_wait_result:
 ; Wait for the SD card to return something other than $ff
-; CS has to be propery asserted before calling
+; CS has to be properly asserted before calling
 ; Return: A 
 ; Preserves: Y,X
 SD_wait_result:
@@ -369,10 +369,10 @@ delay_ms:
     bne  @loop  ; 1277 cycles (3+2 cycles * 255 in loop) + 2 cycles at end
     dey         ; 510 cycles > 2 cycles * 255
     bne  @loop  ; 2566 (1277+2+3 cycles * 2 in loop) + 2 cycles at end
-    ; 2584 Cycles = 4 ldx/y + 2568 lopp + 6 JSR + 6 RTS
+    ; 2584 Cycles = 4 ldx/y + 2568 loop + 6 JSR + 6 RTS
   rts
 
-; Complied BIN
+; Compiled BIN
 ; ADDR:  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 ; 0300: A9 3F 8D 22 7F A9 3C 8D 20 7F 4C 03 FF DA 5A A0 
 ; 0310: 02 A2 00 38 2A B0 0B 8E 20 7F EE 20 7F 0A D0 F5 
@@ -430,7 +430,7 @@ RegLabel:
 
 PRINT_CPU:       
     jsr print_CR          ; CR + LF
-    ldx #$ff              ; using x to cycke through the registers
+    ldx #$ff              ; using x to cycle through the registers
     ldy #$ff              ; using Y to walk though the label
 @LookForEqual:  
     iny                   ;

@@ -1,8 +1,8 @@
-; Herdware for the simple6502 SBC board
+; Hardware for the simple6502 SBC board
 ;
-; This file has the common labels, variables and costants that define the 
-; herdware of my simple6502 SBC https://github.com/marianol/simple6502/
-; is ment to be included in source files and keep hardware related data 
+; This file has the common labels, variables and constants that define the 
+; hardware of my simple6502 SBC https://github.com/marianol/simple6502/
+; is meant to be included in source files and keep hardware related data 
 ; separated from the main assembly code.
 
 ; simple6502 SBC
@@ -51,7 +51,7 @@ ACIA_CFG_28     = %00010110    ; 8-N-1, 28800bps, no IRQ - /64 CLK
 ACIA_CFG_28I    = %10010110    ; 8-N-1, 28800bps, IRQ - /64 CLK 
 
 ; ACIA Helper Constants
-ACIA_TDRE       = %00000010    ; bitmask for TRDE
+ACIA_TDRE       = %00000010    ; bitmask for TDRE
 ACIA_RDRF       = %00000001    ; bitmask for RDRF
 ACIA_RESET      = %00000011    ; 6850 reset
 

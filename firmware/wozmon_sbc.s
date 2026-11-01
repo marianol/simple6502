@@ -1,11 +1,11 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
-;  Adapted to the simple6502 SBC with MC60B50 ACIA by Mariano Luna
+;  Adapted to the simple6502 SBC with MC68B50 ACIA by Mariano Luna
 ;
 ; Changelog:
 ; - 5 bytes less
-; - updated to use BIOS ruitines for Serial int and some I/O
-; - moved Variables to defines_[platfrom].s
+; - updated to use BIOS routines for Serial int and some I/O
+; - moved Variables to defines_[platform].s
 ; - updates to use standard ASCII (not Apple 1 bit 7 set) 
 ; - input now case insensitive
 ; - 
@@ -31,7 +31,7 @@ IN              = $0200         ;  Input buffer is 128 bytes, $0200–$027F,
 
 .segment "WOZMON"  
 WOZMON:
-                ; Run out of mem so assuming serial is inizialized by BIOS
+                ; Run out of mem so assuming serial is initialized by BIOS
                 ; with only one of this JSRs 'WOZMON' overflows the
                 ; 'MONITOR' segment memory area by 1 byte
                 ; if you are running this independently of the bios you
@@ -55,7 +55,7 @@ GETLINE:
 BACKSPACE:      DEY                    ; Back up text index.
                 BMI     GETLINE        ; Beyond start of line, reinitialize.
 NEXTCHAR:
-                LDA     ACIA_STATUS    ; Check AICIA status. 
+                LDA     ACIA_STATUS    ; Check ACIA status. 
                 AND     #ACIA_RDRF     ; Key ready?
                 BEQ     NEXTCHAR       ; Loop until ready.
                 LDA     ACIA_DATA      ; Load character. B7 will be '0'.
@@ -159,7 +159,7 @@ XAMNEXT:        STX     MODE           ; 0 -> MODE (XAM mode).
                 INC     XAMH
 MOD8CHK:
                 LDA     XAML           ; Check low-order 'examine index' byte
-                AND     #$0F           ; * Changed to diesplay 16 bytes per line AND #$07 ; For MOD 8 = 0  #%0000.0111
+                AND     #$0F           ; * Changed to display 16 bytes per line AND #$07 ; For MOD 8 = 0  #%0000.0111
                 BPL     NXTPRNT        ; Always taken.
 PRBYTE:
                 PHA                    ; Save A for LSD.

@@ -67,7 +67,7 @@ al 0081C2 .@loop
 al 0081B5 .serial_in_raw
 al 0081B4 .@no_data
 al 0081A9 .@no_data
-al 008191 .pool_acia
+al 008191 .poll_acia
 al 00816D .via_read_b
 al 008169 .via_read_a
 al 008165 .via_write_b

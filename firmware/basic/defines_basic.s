@@ -65,10 +65,8 @@ STACK_TOP		:= $FA
 RAMSTART2		:= $0400        ; is fine for us also it gives room for the INPUTBUFFER
 
 ; magic memory locations
-ENTROPY = $E844             ; for RND seed, pulls 8 bits of the count value for VIA1 Timer 1 (T1C-L)
-                            ; this is a free running timer in CBM computers used 
-                            ; by basic for generating pseudorandom numbers.
-                            ; @todo we need to change that to our timer
+ENTROPY = BIOS_GET_TOCKS    ; for RND seed we will use our TOCKS counter
+                            ; @todo: wire this into GENERIC_RNDSEED rnd.s 
 
 ; monitor functions
 MONCOUT	:= BIOS_SERIAL_OUT  ; character out, preserves A, X and Y

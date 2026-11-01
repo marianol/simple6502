@@ -5,7 +5,7 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.2]
 
 ### Added
 
@@ -14,6 +14,17 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
   valid mode, nothing else changes), `via_write_a` and `via_write_b` (write A to the port),
   `via_read_a` and `via_read_b` (read the port into A). They are not in the jump table yet, so only
   BIOS code can call them.
+
+### Changed
+
+- BASIC: `ENTROPY` in `basic/defines_basic.s` now points at `BIOS_GET_TOCKS`, the planned source for the `RND`
+  seed. It is not wired into `RND` yet (there is a todo in the file), and the BASIC binary is unchanged.
+
+### Fixed
+
+- Typos in comments in `BIOS.s`, `wozmon_sbc.s`, `defines_simple6502.s` and `userprog/userprg.s`, including the part
+  number in the WozMon header (`MC60B50` is `MC68B50`) and the `ACIA_TDRE` comment. The label of the serial
+  transmit loop is `poll_acia` (it was `pool_acia`), it polls the ACIA status.
 
 ### Tested
 

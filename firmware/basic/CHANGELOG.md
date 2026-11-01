@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `ref/simple6502_ref.bin`, the binary built before the cleanup.
 
 ### Changed
+- `ENTROPY` (`defines_basic.s`) points at `BIOS_GET_TOCKS` instead of the CBM address `$E844`. It is not wired into `RND`
+  yet, there is a todo in the file. The binary is unchanged.
 - `ref/simple6502_ref.bin` was rebuilt for BIOS 0.10.1: one byte differs, the zero page operand of
   `sta BASIC_STARTED` in `init.s` ($EC to $E9), because the BIOS moved the flag down (0.10.0 and 0.10.1).
 - The prompt is `READY.` instead of `OK` (`QT_OK` is now `QT_READY` in `message.s`).

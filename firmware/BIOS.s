@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.10.1"   ; Define the version number
+.define VERSION "0.10.2"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
@@ -67,7 +67,7 @@ reset:
   inx
   bne @sp_aa
 
-  ; Initialize ZP veriables, the ZP test left $AA
+  ; Initialize ZP variables, the ZP test left $AA
   stz BASIC_STARTED   ; BASIC has not been started 
   stz MACHINE_CONFIG  ; no peripheral is initialized yet
   stz RAM_SIZE_L      ; POST will initialize this
@@ -92,7 +92,7 @@ reset:
 
 
 
-; ### Subrutines ### 
+; ### Subroutines ### 
 
 ; post_fail:
 ; Reached when the early ZP, Stack, or POST Mem test fails. 
@@ -257,7 +257,7 @@ via_init_ports:
     beq @init_a_only
     cmp #$02              ; Mode $02?
     beq @init_b_only
-@error:                   ; fall trough if A is not set correclty
+@error:                   ; fall through if A is not set correctly
     sec                   ; Set carry flag to signal error
     rts
 
@@ -308,7 +308,7 @@ via_read_b:
 
 ; ### TOCKS (jiffy clock) ###
 ; TOCKS are a jiffy like clock that relies on VIA1 Timer 1. 
-; It generarates one IRQ every ~10ms, these ticks are counted by irq_handler and stored
+; It generates one IRQ every ~10ms, these ticks are counted by irq_handler and stored
 ; the 3-byte in the ZP TOCKS variable
 
 ; bios_get_tocks:
@@ -350,14 +350,14 @@ serial_init:
 ; serial_out:
 ; Transmit the char in the A Register via the on board
 ; serial ACIA TTL-RS232
-; This routine uses pooling mode and will wait until the ACIA 
+; This routine uses polling mode and will wait until the ACIA 
 ; TX Data Register (TXDR) bit 1 is Empty to send the character. 
 serial_out:  
   pha
-  pool_acia: ; pulling mode until ready to TX
+  poll_acia: ; polling mode until ready to TX
     lda ACIA_STATUS 
     and #ACIA_TDRE     ; looking at Bit 1 TX Data Register Empty > High = Empty
-    beq pool_acia     ; pooling loop if empty
+    beq poll_acia     ; polling loop if empty
   pla
   sta ACIA_DATA       ; output char in A to TDRE
   rts
@@ -382,7 +382,7 @@ serial_poll:
   rts
 
 ; serial_in: 
-; Takes the byte recived by that ACIA and returns it in A (acumulator)  
+; Takes the byte received by that ACIA and returns it in A (accumulator)  
 ; if a byte was received sets the Carry Flag, if not it clears it
 ; Same as serial_poll, but echoes the received byte back to the terminal.
 ;
