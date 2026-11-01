@@ -240,6 +240,71 @@ via_report:
 @done:
   rts
 
+; via_init_ports:
+; Initializes DDRs based on a selection switch with error reporting.
+; Inputs: 
+;   A = Mode Selection ($00 = Both, $01 = DDRA only, $02 = DDRB only)
+;   X = DDRA bitmask
+;   Y = DDRB bitmask
+; Outputs:
+;   Carry Flag = 0 (Clear) on success
+;   Carry Flag = 1 (Set) if A contains invalid data (garbage)
+; Registers altered: None (A is preserved)
+via_init_ports:
+    cmp #$00              ; Mode $00?
+    beq @init_both
+    cmp #$01              ; Mode $01?
+    beq @init_a_only
+    cmp #$02              ; Mode $02?
+    beq @init_b_only
+@error:                   ; fall trough if A is not set correclty
+    sec                   ; Set carry flag to signal error
+    rts
+
+@init_both:
+    stx VIA1_DDRA         ; Apply DDRA mask from X
+    sty VIA1_DDRB         ; Apply DDRB mask from Y
+    clc                   ; Clear carry flag to signal success
+    rts
+
+@init_a_only:
+    stx VIA1_DDRA         ; Apply DDRA mask from X
+    clc                   ; Clear carry flag to signal success
+    rts
+
+@init_b_only:
+    sty VIA1_DDRB         ; Apply DDRB mask from Y
+    clc                   ; Clear carry flag to signal success
+    rts
+
+
+; via_write_a 
+; Writes the Accumulator into PORT A
+; Inputs: A = Data byte to output
+via_write_a:
+    sta VIA1_PORTA
+    rts
+
+; via_write_b
+; Writes the Accumulator into PORT B
+; Inputs: A = Data byte to output
+via_write_b:
+    sta VIA1_PORTB
+    rts
+
+; via_read_a
+; Read PORT A into the Accumulator
+; Outputs: A = Data byte read from input pins
+via_read_a:
+    lda VIA1_PORTA
+    rts
+
+; via_read_b
+; Read PORT B into the Accumulator
+; Outputs: A = Data byte read from input pins
+via_read_b:
+    lda VIA1_PORTB
+    rts
 
 ; ### TOCKS (jiffy clock) ###
 ; TOCKS are a jiffy like clock that relies on VIA1 Timer 1. 

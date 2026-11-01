@@ -5,6 +5,21 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- VIA1 port helper routines in the BIOS: `via_init_ports` (A = $00 sets both data direction
+  registers, $01 only DDRA, $02 only DDRB; X = DDRA mask, Y = DDRB mask; carry set if A is not a
+  valid mode, nothing else changes), `via_write_a` and `via_write_b` (write A to the port),
+  `via_read_a` and `via_read_b` (read the port into A). They are not in the jump table yet, so only
+  BIOS code can call them.
+
+### Tested
+
+- Assembled, and the opcodes, register addresses and branch targets of the new routines were
+  checked in the listing. Not run: nothing calls them yet.
+
 ## [0.10.1]
 
 ### Changed
