@@ -5,6 +5,20 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1]
+
+### Changed
+
+- Removed `VIA_PRESENT`: it was the same information as `BIOS_CFG_VIA1` in `MACHINE_CONFIG`.
+  `via_report` now reads the config byte. That moved the variables after it down by 1:
+  `BASIC_STARTED` is at $E9 and `MACHINE_CONFIG` at $EA (`BIOS_MACHINE_CONFIG` follows, rebuild
+  programs that use the symbol).
+
+### Tested
+
+- In the emulator: with the VIA the banner has the VIA line and `$E9`-`$EA` read 00 03; with no VIA at
+  $7F20 the banner has no VIA line, the ROM still boots to the monitor and `$E9`-`$EA` read 00 01.
+
 ## [0.10.0]
 
 ### Added

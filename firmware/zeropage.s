@@ -106,7 +106,7 @@ SR_REG:
 ; ----------------------------------------------------------------------------
 
 ; ----------------------------------------------------------------------------
-; $E0-$EB BIOS system variables
+; $E0-$EA BIOS system variables
 ; ----------------------------------------------------------------------------
 .org $E0
 TOCKS:                  ; Jiffy-like clock, 3 bytes, ~10ms per tick
@@ -129,8 +129,6 @@ PTR_TX:                 ; Transmit string pointer (used by BIOS_SERIAL_STR)
 PTR_TX_L:
   .res 1
 PTR_TX_H:
-  .res 1
-VIA_PRESENT:            ; non-zero if VIA1 was detected and initialized
   .res 1
 BASIC_STARTED:          ; non-zero once BASIC has been cold started. The BIOS reset clears it and
   .res 1                ; BASIC's cold start sets it. The monitor X command warm starts BASIC only

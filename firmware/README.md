@@ -60,7 +60,7 @@ Without a VIA the clock does not run and reads 0.
 
 ### Machine configuration byte
 
-`BIOS_MACHINE_CONFIG` ($EB, zero page) has one bit per peripheral, set when the BIOS found and
+`BIOS_MACHINE_CONFIG` ($EA, zero page) has one bit per peripheral, set when the BIOS found and
 initialized it. The reset clears it, so only what is really there is set. Programs can read it
 to see what the machine has. The bit names are in `bios_jumptable.inc`:
 
@@ -139,6 +139,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.10.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
+**Version 0.10.1** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

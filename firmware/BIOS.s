@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.10.0"   ; Define the version number
+.define VERSION "0.10.1"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
@@ -175,14 +175,12 @@ post:
 ; An absent card reads back open-bus / mirror values and will fail one of the
 ; two checks. (Writing DDRB only sets pin directions, harmless for detection.)
 ;
-; Sets VIA_PRESENT (and returns carry set) if the VIA responded; clears both
-; otherwise. Leaves IRQs enabled on the VIA only when present.
-; Also sets (or clears) BIOS_CFG_VIA1 in MACHINE_CONFIG.
+; Returns carry set if the VIA responded, clear if not, and sets (or clears)
+; BIOS_CFG_VIA1 in MACHINE_CONFIG. Leaves IRQs enabled on the VIA only when present.
 ; TOCKS is cleared first of all, so it reads 0 even when there is no VIA and the
 ; clock never runs, instead of whatever the memory tests left there.
 ; Overwrites A, X.
 via_init:
-  stz VIA_PRESENT       ; assume absent until proven
   stz TOCKS_L           ; clear the 3-byte TOCKS jiffy counter
   stz TOCKS_M
   stz TOCKS_H
@@ -215,14 +213,12 @@ via_init:
   sta VIA1_IER
   ; mark present
   lda #$01
-  sta VIA_PRESENT
   lda #BIOS_CFG_VIA1
   tsb MACHINE_CONFIG    ; record that VIA1 is initialized
   sec                   ; carry set = present
   rts
 @absent:
   stz VIA1_DDRB         ; restore a benign DDRB (inputs)
-  stz VIA_PRESENT
   lda #BIOS_CFG_VIA1
   trb MACHINE_CONFIG    ; make sure the bit is clear
   clc                   ; carry clear = absent
@@ -233,7 +229,8 @@ via_init:
 ;   ## VIA1 on $7F20
 ; Does nothing if the VIA is absent. Overwrites A, Y.
 via_report:
-  lda VIA_PRESENT
+  lda MACHINE_CONFIG
+  and #BIOS_CFG_VIA1
   beq @done
   lda #<viaMessage
   sta PTR_TX

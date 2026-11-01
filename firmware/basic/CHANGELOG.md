@@ -25,9 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `ref/simple6502_ref.bin`, the binary built before the cleanup.
 
 ### Changed
-
-- `ref/simple6502_ref.bin` was rebuilt for BIOS 0.10.0: one byte differs, the zero page operand of
-  `sta BASIC_STARTED` in `init.s` ($EC to $EA), because the BIOS moved the flag down 2 bytes.
+- `ref/simple6502_ref.bin` was rebuilt for BIOS 0.10.1: one byte differs, the zero page operand of
+  `sta BASIC_STARTED` in `init.s` ($EC to $E9), because the BIOS moved the flag down (0.10.0 and 0.10.1).
 - The prompt is `READY.` instead of `OK` (`QT_OK` is now `QT_READY` in `message.s`).
 - `ref/simple6502_ref.bin` was rebuilt for these changes. It was checked by running BASIC in
   the emulator: the statements and functions whose token numbers moved, a program with
