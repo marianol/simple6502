@@ -6,7 +6,7 @@
 .setcpu "65C02"           ; Thats what we got
 .debuginfo +
 
-.define VERSION "0.10.2"   ; Define the version number
+.define VERSION "0.11.0"   ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
 .include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
@@ -78,7 +78,7 @@ reset:
   txs               ; 9A      set the stack start
   jsr post          ; do the rest of POST (RAM walk)
   jsr serial_init   ; init ACIA # IO_8
-  jsr via_init      ; detect + init VIA1 (sets carry if present)
+  jsr via_init      ; detect + init VIA1 (carry clear = found)
   ; Print startup message (BIOS banner)
   lda #<startupMessage 
   sta PTR_TX
@@ -173,9 +173,9 @@ post:
 ; Detection: DDRB is a plain read/write register with no external side effect
 ; on the value stored, so we write two patterns ($55, $AA) and read them back.
 ; An absent card reads back open-bus / mirror values and will fail one of the
-; two checks. (Writing DDRB only sets pin directions, harmless for detection.)
+; two checks.
 ;
-; Returns carry set if the VIA responded, clear if not, and sets (or clears)
+; Returns carry clear if the VIA responded, set if not, and sets (or clears)
 ; BIOS_CFG_VIA1 in MACHINE_CONFIG. Leaves IRQs enabled on the VIA only when present.
 ; TOCKS is cleared first of all, so it reads 0 even when there is no VIA and the
 ; clock never runs, instead of whatever the memory tests left there.
@@ -189,7 +189,7 @@ via_init:
   sta VIA1_DDRB
   cmp VIA1_DDRB
   bne @absent
-  lda #$AA
+  lda #$AA        ; the complement: every bit is tested as 0 and as 1
   sta VIA1_DDRB
   cmp VIA1_DDRB
   bne @absent
@@ -211,17 +211,15 @@ via_init:
   ; enable the Timer 1 interrupt
   lda #VIA_IER_T1_ENABLE
   sta VIA1_IER
-  ; mark present
-  lda #$01
   lda #BIOS_CFG_VIA1
   tsb MACHINE_CONFIG    ; record that VIA1 is initialized
-  sec                   ; carry set = present
+  clc                   ; carry clear = found
   rts
 @absent:
   stz VIA1_DDRB         ; restore a benign DDRB (inputs)
   lda #BIOS_CFG_VIA1
   trb MACHINE_CONFIG    ; make sure the bit is clear
-  clc                   ; carry clear = absent
+  sec                   ; carry set = not found
   rts
 
 ; via_report:
@@ -240,70 +238,98 @@ via_report:
 @done:
   rts
 
-; via_init_ports:
-; Initializes DDRs based on a selection switch with error reporting.
-; Inputs: 
-;   A = Mode Selection ($00 = Both, $01 = DDRA only, $02 = DDRB only)
-;   X = DDRA bitmask
-;   Y = DDRB bitmask
-; Outputs:
-;   Carry Flag = 0 (Clear) on success
-;   Carry Flag = 1 (Set) if A contains invalid data (garbage)
-; Registers altered: None (A is preserved)
-via_init_ports:
-    cmp #$00              ; Mode $00?
-    beq @init_both
-    cmp #$01              ; Mode $01?
-    beq @init_a_only
-    cmp #$02              ; Mode $02?
-    beq @init_b_only
-@error:                   ; fall through if A is not set correctly
-    sec                   ; Set carry flag to signal error
+; ### VIA ports ###
+
+; via_config, via_set_ddr, via_read, via_write:
+; Public VIA port routines, reached through BIOS_VIA_CONFIG, BIOS_VIA_SET_DDR, BIOS_VIA_READ
+; and BIOS_VIA_WRITE. 
+; They all use the same convention:
+;   X = VIA index (0 = VIA1, 1 = VIA2, etc.)
+;   Y = Port (0 = port A, 1 = port B)
+;   A = Data (the DDR pattern (via_set_ddr) or the data to write (via_write)
+;   Returns: Carry set = Fail ; clear = complete. On fail the routine does nothing.
+;
+;   Always Fails if the VIA is not one the BIOS found and initialized at boot (MACHINE_CONFIG), or if
+;   the port is not 0 or 1.
+
+; via_config: 
+; carry set if VIA X was found and initialized at boot, clear if not.
+; An index with no VIA behind it (VIA_COUNT and up) is "not found".
+via_config:
+    pha
+    cpx #VIA_COUNT        ; carry set if the index is too high, that is the failure
+    bcs @done
+    lda MACHINE_CONFIG
+    and via_cfg_mask,x    ; this VIA's bit
+    beq @absent
+    clc                   ; found
+    bra @done
+@absent:
+    sec                   ; no via found
+@done:
+    pla                   ; does not touch carry
     rts
 
-@init_both:
-    stx VIA1_DDRA         ; Apply DDRA mask from X
-    sty VIA1_DDRB         ; Apply DDRB mask from Y
-    clc                   ; Clear carry flag to signal success
+; The MACHINE_CONFIG bit of each VIA, by VIA index
+via_cfg_mask:
+    .byte BIOS_CFG_VIA1
+via_cfg_mask_end:
+.assert via_cfg_mask_end - via_cfg_mask = VIA_COUNT, error, "via_cfg_mask must have VIA_COUNT entries"
+
+; via_select: carry clear if VIA X exists and Y is a port (0 or 1), set if not.
+via_select:
+    jsr via_config
+    bcs @done
+    cpy #2                ; carry set if Y is 2 or more
+@done:
     rts
 
-@init_a_only:
-    stx VIA1_DDRA         ; Apply DDRA mask from X
-    clc                   ; Clear carry flag to signal success
+; via_set_ddr: 
+;   write the DDR pattern in A to port Y of VIA X.
+via_set_ddr:
+    jsr via_select
+    bcs @done
+    cpy #1
+    beq @port_b
+    sta VIA1_DDRA         ; Y = 0
+    clc
+    rts
+@port_b:
+    sta VIA1_DDRB         ; Y = 1
+    clc
+@done:
     rts
 
-@init_b_only:
-    sty VIA1_DDRB         ; Apply DDRB mask from Y
-    clc                   ; Clear carry flag to signal success
+; via_read: 
+;   read port Y of VIA X, the value comes back in A.
+via_read:
+    jsr via_select
+    bcs @done
+    cpy #1
+    beq @port_b
+    lda VIA1_PORTA        ; Y = 0
+    clc
+    rts
+@port_b:
+    lda VIA1_PORTB        ; Y = 1
+    clc
+@done:
     rts
 
-
-; via_write_a 
-; Writes the Accumulator into PORT A
-; Inputs: A = Data byte to output
-via_write_a:
-    sta VIA1_PORTA
+; via_write: 
+;   write A to port Y of VIA X.
+via_write:
+    jsr via_select
+    bcs @done
+    cpy #1
+    beq @port_b
+    sta VIA1_PORTA        ; Y = 0
+    clc
     rts
-
-; via_write_b
-; Writes the Accumulator into PORT B
-; Inputs: A = Data byte to output
-via_write_b:
-    sta VIA1_PORTB
-    rts
-
-; via_read_a
-; Read PORT A into the Accumulator
-; Outputs: A = Data byte read from input pins
-via_read_a:
-    lda VIA1_PORTA
-    rts
-
-; via_read_b
-; Read PORT B into the Accumulator
-; Outputs: A = Data byte read from input pins
-via_read_b:
-    lda VIA1_PORTB
+@port_b:
+    sta VIA1_PORTB        ; Y = 1
+    clc
+@done:
     rts
 
 ; ### TOCKS (jiffy clock) ###

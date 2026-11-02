@@ -43,6 +43,10 @@ equate there too or the build fails.
 | $801E | `BIOS_LOAD`       | BASIC `LOAD` (stub for now, just `RTS`)         |
 | $8021 | `BIOS_SAVE`       | BASIC `SAVE` (stub for now, just `RTS`)         |
 | $8024 | `BIOS_GET_TOCKS`  | Read the TOCKS jiffy clock: A = low, X = middle, Y = high |
+| $8027 | `BIOS_VIA_CONFIG`  | Check VIA (X = VIA index): carry clear = found       |
+| $802A | `BIOS_VIA_SET_DDR` | Set DDR (X = VIA index, Y = port 0/1, A = pattern)   |
+| $802D | `BIOS_VIA_READ`    | Read port (X = VIA index, Y = port 0/1) -> A         |
+| $8030 | `BIOS_VIA_WRITE`   | Write port (X = VIA index, Y = port 0/1, A = data)   |
 
 ```asm
 .include "bios_jumptable.inc"
@@ -74,6 +78,32 @@ to see what the machine has. The bit names are in `bios_jumptable.inc`:
         lda BIOS_MACHINE_CONFIG
         and #BIOS_CFG_VIA1
         beq no_via
+```
+
+### VIA ports
+
+Four routines drive the VIA ports. They all use the same convention:
+
+- `X` = VIA index, 0 is VIA1.
+- `Y` = port, 0 is port A and 1 is port B.
+- `A` = the DDR pattern (`BIOS_VIA_SET_DDR`, 1 is an output) or the data to write (`BIOS_VIA_WRITE`).
+  `BIOS_VIA_READ` returns the value in `A`.
+- Carry is the result: **clear = done, set = failed**. A routine fails, and does nothing, if that VIA
+  was not found at boot (see the machine configuration byte), if the index is not a VIA the BIOS
+  knows, or if the port is not 0 or 1.
+- `A`, `X` and `Y` come back unchanged (except the value `BIOS_VIA_READ` returns). The other flags
+  are not defined.
+
+Only VIA1 exists for now, so index 1 and up fail.
+
+```asm
+        ldx #0              ; VIA1
+        ldy #1              ; port B
+        lda #$FF            ; all pins are outputs
+        jsr BIOS_VIA_SET_DDR
+        bcs no_via          ; VIA1 is not there
+        lda #$A5
+        jsr BIOS_VIA_WRITE
 ```
 
 ## Monitor Commands
@@ -139,6 +169,6 @@ programmer. It defaults to `out/BIOS.bin` and checks the image is exactly
 
 ## Status
 
-**Version 0.10.2** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
+**Version 0.11.0** — tested in the simple6502 emulator. Not tested on board rev 1.6 yet.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.

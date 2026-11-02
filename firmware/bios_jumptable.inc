@@ -30,6 +30,14 @@ BIOS_BASIC_WARM = BIOS_JUMPTABLE + 9*3   ; $801B warm start MS BASIC (keeps the 
 BIOS_LOAD       = BIOS_JUMPTABLE + 10*3  ; $801E BASIC LOAD (stub for now, just RTS)
 BIOS_SAVE       = BIOS_JUMPTABLE + 11*3  ; $8021 BASIC SAVE (stub for now, just RTS)
 BIOS_GET_TOCKS  = BIOS_JUMPTABLE + 12*3  ; $8024 read the TOCKS jiffy clock: A = low, X = middle, Y = high byte
+; VIA port routines. The same convention in all four: X = VIA index (0 = VIA1), Y = port (0 = A, 1 = B).
+; Returns:
+; Carry clear = done/complete, set = failure (no such VIA, port is not 0 or 1).
+; BIOS_VIA_READ A = read value 
+BIOS_VIA_CONFIG  = BIOS_JUMPTABLE + 13*3 ; $8027 check VIA (X = VIA index), carry clear = found and initialized
+BIOS_VIA_SET_DDR = BIOS_JUMPTABLE + 14*3 ; $802A set DDR (X = VIA index, Y = port 0/1, A = DDR pattern, 1 = output)
+BIOS_VIA_READ    = BIOS_JUMPTABLE + 15*3 ; $802D read port (X = VIA index, Y = port 0/1) -> returns A
+BIOS_VIA_WRITE   = BIOS_JUMPTABLE + 16*3 ; $8030 write port (X = VIA index, Y = port 0/1, A = data)
 
 ; Machine configuration byte, in zero page. One bit per peripheral: the BIOS sets it when it has
 ; found and initialized the peripheral. The BIOS reset clears the byte, so only the peripherals

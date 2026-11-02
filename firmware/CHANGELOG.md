@@ -5,6 +5,37 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0]
+
+### Added
+
+- Four public VIA port routines, jump table slots 13 to 16: `BIOS_VIA_CONFIG` ($8027, check VIA X),
+  `BIOS_VIA_SET_DDR` ($802A), `BIOS_VIA_READ` ($802D) and `BIOS_VIA_WRITE` ($8030). One convention for
+  all four: X = VIA index (0 = VIA1), Y = port (0 = A, 1 = B), A = DDR pattern or data. Carry is the
+  result, clear = done and set = failed. They fail, and do nothing, if the VIA was not found at boot
+  (its `MACHINE_CONFIG` bit), if the index is not a VIA the BIOS knows, or if the port is not 0 or 1.
+  A, X and Y come back unchanged (A holds the value for `BIOS_VIA_READ`), other flags are not defined.
+- `VIA_COUNT` in `defines_simple6502.s`: how many VIAs the port routines know. Only VIA1 for now, so
+  index 1 and up fail until VIA2 has an address.
+
+### Changed
+
+- `via_init` returns carry clear when it finds the VIA and set when it does not (it was the other way
+  round), like the VIA port routines. The reset ignores it.
+- These replace the internal port helpers added in 0.10.2 (`via_init_ports`, `via_write_a`,
+  `via_write_b`, `via_read_a`, `via_read_b`). Those were never in the jump table. The presence check
+  is part of the new routines.
+
+### Tested
+
+- In sim65 (where $7F20-$7F23 are plain memory, so a write can be read back), with a program that calls
+  the four routines through the jump table of the real ROM image: 55 checks pass. They cover carry on
+  success and failure, A/X/Y preserved, the right register address hit for each port, failures writing
+  nothing (bad port, bad index, VIA not found, a VIA2 bit alone), and the stack balanced. Two deliberate
+  breakages of the ROM are caught: the port A write moved to port B's address fails the register check,
+  and a "found" reported with carry set fails the first check.
+- Not run on the emulator or the board.
+
 ## [0.10.2]
 
 ### Added

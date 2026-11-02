@@ -23,6 +23,10 @@
 ; 10    $801E    J_LOAD        - BASIC LOAD (stub for now, just RTS)
 ; 11    $8021    J_SAVE        - BASIC SAVE (stub for now, just RTS)
 ; 12    $8024    J_GET_TOCKS   - read the TOCKS jiffy clock (A = low, X = middle, Y = high)
+; 13    $8027    J_VIA_CONFIG  - check VIA (X = VIA index), carry clear = found
+; 14    $802A    J_VIA_SET_DDR - set DDR (X = VIA index, Y = port 0/1, A = DDR pattern)
+; 15    $802D    J_VIA_READ    - read port (X = VIA index, Y = port 0/1) -> A
+; 16    $8030    J_VIA_WRITE   - write port (X = VIA index, Y = port 0/1, A = data)
 ;
 ; The equates for these addresses live in bios_jumptable.inc for programs to
 ; include. The .asserts at the end of this file stop the build if the two get
@@ -45,6 +49,10 @@ J_BASIC_WARM:  jmp BASIC_WARM_START ; slot 9  $801B  BASIC's own entry, $DC03
 J_LOAD:        jmp bios_load        ; slot 10 $801E
 J_SAVE:        jmp bios_save        ; slot 11 $8021
 J_GET_TOCKS:   jmp bios_get_tocks   ; slot 12 $8024
+J_VIA_CONFIG:  jmp via_config       ; slot 13 $8027
+J_VIA_SET_DDR: jmp via_set_ddr      ; slot 14 $802A
+J_VIA_READ:    jmp via_read         ; slot 15 $802D
+J_VIA_WRITE:   jmp via_write        ; slot 16 $8030
 
 ; Keep MONITOR as an alias for existing code that referenced it.
 MONITOR = J_MONITOR
@@ -64,4 +72,8 @@ MONITOR = J_MONITOR
 .assert J_LOAD        = BIOS_LOAD,        lderror, "jump table slot 10 does not match bios_jumptable.inc"
 .assert J_SAVE        = BIOS_SAVE,        lderror, "jump table slot 11 does not match bios_jumptable.inc"
 .assert J_GET_TOCKS   = BIOS_GET_TOCKS,   lderror, "jump table slot 12 does not match bios_jumptable.inc"
+.assert J_VIA_CONFIG  = BIOS_VIA_CONFIG,  lderror, "jump table slot 13 does not match bios_jumptable.inc"
+.assert J_VIA_SET_DDR = BIOS_VIA_SET_DDR, lderror, "jump table slot 14 does not match bios_jumptable.inc"
+.assert J_VIA_READ    = BIOS_VIA_READ,    lderror, "jump table slot 15 does not match bios_jumptable.inc"
+.assert J_VIA_WRITE   = BIOS_VIA_WRITE,   lderror, "jump table slot 16 does not match bios_jumptable.inc"
 .assert MACHINE_CONFIG = BIOS_MACHINE_CONFIG, lderror, "MACHINE_CONFIG in zeropage.s does not match BIOS_MACHINE_CONFIG in bios_jumptable.inc"
