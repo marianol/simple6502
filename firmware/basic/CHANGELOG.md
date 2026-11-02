@@ -5,14 +5,27 @@ All notable changes to this Simple6502 fork of
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.1]
+
 ### Added
+
 - `MONITOR` statement (`extra.s`, keyword in `token.s` after `SYS`): jumps to the WozMon
   monitor through `BIOS_MONITOR`. The monitor's `X` command returns with a warm start. The
   token numbers after `SYS` moved by one.
 - The cold start sets `BASIC_STARTED` (`init.s`, the zero page flag from `../zeropage.s`) just
   before it enters the prompt, so the monitor `X` command knows a warm start is safe.
+- `SYS address` statement (`poke.s`, keyword in `token.s`). Calls a machine code routine at
+  0-65535 and returns on `RTS`, ILLEGAL QUANTITY if out of range. It does not load the CPU
+  registers like the CBM does. The token numbers after `CLEAR` moved by one. Tested in the emulator.
+- `SOURCE_FILES.md`: files the simple6502 build reads, with a short
+  description of each.
+- This changelog.
+
+- `compare_simple6502.sh`: builds simple6502 and compares it byte by byte with
+  `ref/simple6502_ref.bin`, the binary built before the cleanup.
+
 ### Changed
+
 - `ref/simple6502_ref.bin` was rebuilt for BIOS 0.10.0: one byte differs, the zero page operand of
   `sta BASIC_STARTED` in `init.s` ($EC to $EA), because the BIOS moved the flag down 2 bytes.
 - The prompt is `READY.` instead of `OK` (`QT_OK` is now `QT_READY` in `message.s`).
@@ -34,26 +47,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   page map (`firmware/zeropage.s`), and `MEMSIZ` is now defined as `RAM_SIZE` from that map
   instead of a copy of `$E3`. `zeropage_basic.s` has an `.assert` that the BASIC block ends
   inside the range reserved for it.
-
-### Removed
-
-- Files for all other targets (defines, linker configs, extra, iscntc and
-  loadsave files), `make.sh`, `regress.sh` and the `orig/` reference binaries.
-
-### Added
-
-- `SYS address` statement (`poke.s`, keyword in `token.s`). Calls a machine code routine at
-  0-65535 and returns on `RTS`, ILLEGAL QUANTITY if out of range. It does not load the CPU
-  registers like the CBM does. The token numbers after `CLEAR` moved by one. Tested in the emulator.
-- `SOURCE_FILES.md`: files the simple6502 build reads, with a short
-  description of each.
-- This changelog.
-
-- `compare_simple6502.sh`: builds simple6502 and compares it byte by byte with
-  `ref/simple6502_ref.bin`, the binary built before the cleanup.
-
-### Changed
-
 - Startup banner: `### SIMPLE 6502 BASIC ###`, a blank line, then the free memory and
   `(C) 1978 MICROSOFT` on one line. `QT_BYTES_FREE` no longer runs into the copyright text, each
   string (`QT_BASIC`, `QT_BYTES_FREE`, `QT_COPYWRITE`) has its own 0 and its own call in `init.s`.
@@ -98,8 +91,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `TODO.txt` renamed to `TODO.md`.
 - README rewritten for the Simple6502-only branch.
 
+### Removed
+
+- Files for all other targets (defines, linker configs, extra, iscntc and
+  loadsave files), `make.sh`, `regress.sh` and the `orig/` reference binaries.
+
 ### Fixed
 
+- `TAB`, `POS` and the comma zones used a wrong column: `POSX` stayed at 13 (`CRLF_1`) after every line break.
+  `CRDO` stores `CRLF_1` in `POSX` and the code that follows (`PRINTNULLS`) is supposed to clear it. The upstream
+  code does that with `lda #0 / sta POSX` unless `CONFIG_2` is set, and when it is set either a KERNAL keeps `POSX`
+  (CBM2) or the NULL code clears it. This build is `CONFIG_2A` with neither, so nothing cleared it. `PRINTNULLS`
+  now sets `POSX` to 0 (`print.s`, 4 bytes). `ref/simple6502_ref.bin` was rebuilt for it.
 - Backspace ($08) and DEL ($7F) are handled in `MONRDKEY`: the last character
   is removed from the line buffer and erased on the terminal. `inline.s` is
   unchanged. Tested in the emulator, together with Ctrl-C.

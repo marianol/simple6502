@@ -5,6 +5,8 @@ This is based on the https://github.com/mist64/msbasic project. The source was c
 The files BASIC shares with the BIOS are in the parent folder (`firmware/`): `simple6502.cfg`, `bios_jumptable.inc` and `zeropage.s`. To avoid name clashes, the two BASIC files that had the same names as BIOS files were renamed: `defines_basic.s` and `zeropage_basic.s`.
 
 
+Version **0.1.1**, see [CHANGELOG.md](CHANGELOG.md) for the history.
+
 ## Simple6502 Port
 
 This fork adds a target for [Simple6502](https://github.com/marianol/simple6502), a homebrew 6502 SBC with a serial terminal. It is based on the CBM2 configuration (CONFIG_2A, `INPUTBUFFER` at $0200).

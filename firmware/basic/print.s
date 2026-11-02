@@ -68,6 +68,11 @@ L29D9:
         pla
         tax
   .else
+; CHANGED: reset the column after a CR. The upstream code does this (lda #0 / sta POSX) unless CONFIG_2 is
+; set, but CONFIG_2 targets either have a KERNAL that keeps POSX (CBM2) or the NULL code below that clears it.
+; This build is CONFIG_2A without either, so POSX stayed at CRLF_1 (13) and TAB, POS and the comma zones broke.
+        lda     #$00
+        sta     POSX
         eor     #$FF
   .endif
 L29DD:
