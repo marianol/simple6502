@@ -152,6 +152,11 @@ block that grows into its neighbour (or into the range reserved for BASIC) fails
 build. The full map, with the BASIC variables, is in
 [docs/ZEROPAGE_MAP.md](docs/ZEROPAGE_MAP.md).
 
+### Tests
+
+`test/` has tests of the BIOS routines that run in sim65 (cc65's simulator), in seconds and with no
+emulator or board. Run `test/run_tests.sh`, see [test/README.md](test/README.md).
+
 ### Burning the ROM
 
 `burn.sh` flashes a ROM image to an Atmel AT28C256 (32K EEPROM) using

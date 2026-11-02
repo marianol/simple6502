@@ -5,6 +5,15 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `test/`: tests of the BIOS routines that run in sim65, cc65's simulator. `test/run_tests.sh` builds the
+  BIOS in a temporary folder and runs every `*_test.s`, printing the line of the check that failed.
+  `test/test.inc` has the helpers and `test/via_ports_test.s` tests the four VIA port routines through the
+  jump table of the real ROM (55 checks). See `test/README.md`.
+
 ## [0.11.0]
 
 ### Added
