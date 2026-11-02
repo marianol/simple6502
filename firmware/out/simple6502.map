@@ -1,0 +1,54 @@
+Modules list:
+-------------
+BIOS.o:
+    ZEROPAGE          Offs=000000  Size=000021  Align=00001  Fill=0000
+    HEADER            Offs=000000  Size=000033  Align=00001  Fill=0000
+    BIOS              Offs=000000  Size=0003F2  Align=00001  Fill=0000
+    WOZMON            Offs=000000  Size=0000EE  Align=00001  Fill=0000
+    RESETVECTORS      Offs=000000  Size=000006  Align=00001  Fill=0000
+BASIC.o:
+    CODE              Offs=000000  Size=001CDC  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000021  Size=000098  Align=00001  Fill=0000
+    BASHEADER         Offs=000000  Size=000006  Align=00001  Fill=0000
+    VECTORS           Offs=000000  Size=000088  Align=00001  Fill=0000
+    KEYWORDS          Offs=000000  Size=0000EB  Align=00001  Fill=0000
+    DUMMY             Offs=000000  Size=000047  Align=00001  Fill=0000
+    ERROR             Offs=000000  Size=0000F0  Align=00001  Fill=0000
+    CHRGET            Offs=000000  Size=00001D  Align=00001  Fill=0000
+    INIT              Offs=000000  Size=0000F7  Align=00001  Fill=0000
+    EXTRA             Offs=000000  Size=000032  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+DUMMY                 000000  000046  000047  00001
+ZEROPAGE              000000  0000B8  0000B9  00001
+HEADER                008000  008032  000033  00001
+BIOS                  008033  008424  0003F2  00001
+BASHEADER             00DC00  00DC05  000006  00001
+VECTORS               00DC06  00DC8D  000088  00001
+KEYWORDS              00DC8E  00DD78  0000EB  00001
+ERROR                 00DD79  00DE68  0000F0  00001
+CODE                  00DE69  00FB44  001CDC  00001
+CHRGET                00FB45  00FB61  00001D  00001
+INIT                  00FB62  00FC58  0000F7  00001
+EXTRA                 00FC59  00FC8A  000032  00001
+WOZMON                00FF00  00FFED  0000EE  00001
+RESETVECTORS          00FFFA  00FFFF  000006  00001
+
+
+Exports list by name:
+---------------------
+
+
+
+Exports list by value:
+----------------------
+
+
+
+Imports list:
+-------------
+

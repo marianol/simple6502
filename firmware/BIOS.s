@@ -3,25 +3,23 @@
 ; License: BSD-3-Clause
 ; https://opensource.org/license/bsd-3-clause
 
-.setcpu "65C02"           ; Thats what we got
+.setcpu "65C02"                 ; That's what we got
 .debuginfo +
 
-.define VERSION "0.11.0"   ; Define the version number
+.define VERSION "0.11.1"        ; Define the version number
 
 .include "defines_simple6502.s" ; Include HW Constants and Labels
-.include "zeropage.s"           ; Zero page map (all ZP variables are declared there)
+.include "zeropage.s"           ; Zero page map 
+.include "bios_jumptable.inc"   ; Include BIOS jump table constants
 
-; -- ROM START --
-;.org $8000 
 
-; ## BIOS Jump Table (public ABI) ##
-; The fixed-address jump table at the start of ROM is in bios_header.s
-.include "bios_jumptable.inc"
-.include "bios_header.s"
+; ROM START $8000 
+; ## BIOS Jump Table ##
+.include "bios_header.s"        ; Fixed-address jump table at the start of ROM 
 
-; ## BIOS Start ##
+; ## BIOS Code Start ##
 .segment "BIOS"  
-  ; Write an identifier in the rom so it can be identified when dumping the ROM
+  ; Write an identifier in the rom to see when dumping the ROM which one you have
   .byte "BIOS-simple6502-v"
   .byte VERSION
 
@@ -29,9 +27,8 @@
 reset:
   sei               ; 78      disable interrupts 
   cld               ; D8      turn decimal mode off
-  ; Memory Check: Zero Page and Stack (Page 1)
-  ; These run BEFORE the stack is used so we can test Page 1
-  ; A mismatch jumps to post_fail.
+  ; Memory Check: Zero Page and Stack (Page 1) on error jumps to post_fail.
+  ; These have to run BEFORE the stack is used so we can test Page 1
 
   ; Test Zero Page ($0000-$00FF): checkerboard $55 then $AA
   ldx #0
@@ -67,13 +64,12 @@ reset:
   inx
   bne @sp_aa
 
+  ; ZP and stack are good - carry on.
   ; Initialize ZP variables, the ZP test left $AA
   stz BASIC_STARTED   ; BASIC has not been started 
   stz MACHINE_CONFIG  ; no peripheral is initialized yet
   stz RAM_SIZE_L      ; POST will initialize this
   stz RAM_SIZE_H
-
-  ; ZP and stack are good - establish the stack pointer and carry on.
   ldx #$FF          ; A2 FF
   txs               ; 9A      set the stack start
   jsr post          ; do the rest of POST (RAM walk)
@@ -85,10 +81,11 @@ reset:
   lda #>startupMessage
   sta PTR_TX_H
   jsr serial_out_str
-  ; If VIA1 was detected, announce it under the banner: "## VIA1 on $7F20"
-  jsr via_report
+  ; If VIA1 was detected, announce it "## VIA1 on $7F20"
+  jsr via1_report
   cli               ; enable IRQs now that handlers/VIA are set up
-  jmp WOZMON_COLD   ; BIOS starts with the monitor
+  ; BIOS init complete 
+  jmp WOZMON_COLD   ; give control to the monitor
 
 
 
@@ -99,13 +96,12 @@ reset:
 ; Serial is NOT up yet and we have no onboard failure indicator (LED/beeper) 
 ; in rev 1.6 of the SBC hardware so as a placeholder, we signal the fault on 
 ; the DATA BUS: repeatedly writing $01 then $00 to a Zero Page location drives 
-; D0 with a steady ~1 kHz pattern (D1-D7 idle low) that can be caught with a scope 
-; This never returns - a failed ZP/stack test is terminal.
+; D0 with a ~1 kHz pattern (D1-D7 idle low) that can be caught with a scope 
+; This never returns - a failed mem check is terminal.
 ;
 ; The position of this routine is critical so the ZP/stack and POST checks can
-; reach it with a branch (6502 branch is -128 to +127 bytes from the memory location
-; immediately following the branch instruction.
-; Routine uses no ZP variables and no stack since those may have failed.
+; reach it with a branch (6502 branch has to be -128 to +127 bytes from where 
+; is called. Routine uses no ZP and no stack since those may have failed.
 post_fail:
   lda #$01
   sta ZP_START          ; write 1 -> D0 high on the bus
@@ -122,11 +118,10 @@ post_fail:
   bra post_fail         ; loop forever (fault beacon)
 
 ; post:
-; Power on Self Test
-; post runs after the early ZP/stack test, so we can trust both 
+; Power on Self Test, runs after the early ZP/stack test, so we can trust both. 
 post: 
   ; Walk RAM from $0200 up, store top of RAM in RAM_SIZE 
-  ; RAM_SIZE holds the first non-RAM address (top usable RAM address + 1).
+  ; RAM_SIZE is set to the first non-RAM address (top usable RAM address + 1).
   ; Checkerboard-test each byte ($55 then $AA) and read it back. Stop at the
   ; first byte that fails or when we reach the I/O space at $7F00. 
   POST_PTR = $10        ; Use ZP for RAM-walk pointer, 2 bytes
@@ -189,14 +184,15 @@ via_init:
   sta VIA1_DDRB
   cmp VIA1_DDRB
   bne @absent
-  lda #$AA        ; the complement: every bit is tested as 0 and as 1
+  lda #$AA              ; the complement: every bit is tested as 0 and as 1
   sta VIA1_DDRB
   cmp VIA1_DDRB
   bne @absent
-  ; --- VIA present: configure Timer 1 free-run tick ---
+  ; --- VIA present --
+  ; configure Timer 1 free-run interrupt @ ~10ms 
   lda #$00
-  sta VIA1_DDRB         ; leave Port B as inputs (benign default)
-  sta VIA1_DDRA         ; leave Port A as inputs too
+  sta VIA1_DDRB         ; leave Ports as inputs (benign default)
+  sta VIA1_DDRA
   ; disable all VIA interrupt sources first
   lda #VIA_IER_CLR_ALL
   sta VIA1_IER
@@ -215,21 +211,20 @@ via_init:
   tsb MACHINE_CONFIG    ; record that VIA1 is initialized
   clc                   ; carry clear = found
   rts
-@absent:
+@absent:                ; no VIA1 found
   stz VIA1_DDRB         ; restore a benign DDRB (inputs)
   lda #BIOS_CFG_VIA1
   trb MACHINE_CONFIG    ; make sure the bit is clear
   sec                   ; carry set = not found
   rts
 
-; via_report:
-; If VIA1 was detected, print a line under the BIOS banner:
-;   ## VIA1 on $7F20
+; via1_report:
+; If VIA1 was detected, send on serial ## VIA1 on $7F20 
 ; Does nothing if the VIA is absent. Overwrites A, Y.
-via_report:
+via1_report:
   lda MACHINE_CONFIG
   and #BIOS_CFG_VIA1
-  beq @done
+  beq @done             ; bit not set so no VIA1 
   lda #<viaMessage
   sta PTR_TX
   lda #>viaMessage
@@ -255,6 +250,7 @@ via_report:
 ; via_config: 
 ; carry set if VIA X was found and initialized at boot, clear if not.
 ; An index with no VIA behind it (VIA_COUNT and up) is "not found".
+; A, X, and Y are preserved
 via_config:
     pha
     cpx #VIA_COUNT        ; carry set if the index is too high, that is the failure
@@ -273,10 +269,12 @@ via_config:
 ; The MACHINE_CONFIG bit of each VIA, by VIA index
 via_cfg_mask:
     .byte BIOS_CFG_VIA1
+    ; .byte BIOS_CFG_VIA2
 via_cfg_mask_end:
 .assert via_cfg_mask_end - via_cfg_mask = VIA_COUNT, error, "via_cfg_mask must have VIA_COUNT entries"
 
 ; via_select: carry clear if VIA X exists and Y is a port (0 or 1), set if not.
+; A, X, and Y are preserved
 via_select:
     jsr via_config
     bcs @done
@@ -287,15 +285,15 @@ via_select:
 ; via_set_ddr: 
 ;   write the DDR pattern in A to port Y of VIA X.
 via_set_ddr:
-    jsr via_select
+    jsr via_select        ; check the VIA exists and the port is in range
     bcs @done
     cpy #1
     beq @port_b
-    sta VIA1_DDRA         ; Y = 0
+    sta VIA1_DDRA         ; Y = 0 Port A
     clc
     rts
 @port_b:
-    sta VIA1_DDRB         ; Y = 1
+    sta VIA1_DDRB         ; Y = 1 Port B
     clc
 @done:
     rts
@@ -449,7 +447,7 @@ serial_out_str:
   @null_found:
   rts
 
-; # Helper Routines for Serial comms
+; # Helper Routines for Serial Comms
 
 ; serial_out_hex:
 ; Transmit the value of the A Register as ASCII HEX byte
@@ -537,9 +535,8 @@ cmd_dispatch:
 ; load_ihex:
 ; Receive an Intel HEX stream from the serial port and store it in memory.
 ; Each data record (type 00) is written at the 16-bit address carried in the
-; record itself, so no manual deposit address is needed. A record checksum is
-; verified; on mismatch the load aborts with an error message. An EOF record
-; (type 01) ends the load with "OK".
+; record itself. A record checksum is verified; on mismatch the load aborts 
+; with an error message. An EOF record (type 01) ends the load with "OK".
 ; Record: ':' LL AAAA TT <data...> CC   (all hex ASCII)
 ; Uses IHEX_* zero page scratch. Overwrites A, X, Y.
 load_ihex:
@@ -609,8 +606,9 @@ load_ihex:
 ; Writes 16-byte type 00 data records followed by a type 01 EOF record.
 ; Uses IHEX_* zero page scratch. Overwrites A, X, Y.
 save_ihex:
-  ; WozMon's block-XAM ("START.END") leaves the start address in STL/STH and
-  ; the end address in L/H, but it advances XAML/XAMH to the end while dumping.
+  ; WozMon's block-XAM ("START.END"). 
+  ; Start address in STL/STH and End address in L/H, 
+  ; Advances XAML/XAMH to the end while dumping.
   ; Re-seed our working pointer (XAML/XAMH) from STL/STH so we start at START.
   lda STL
   sta XAML

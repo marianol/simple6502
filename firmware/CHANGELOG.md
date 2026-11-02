@@ -5,7 +5,16 @@ All notable changes to the simple6502 BIOS are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.1]
+
+### Changed
+
+- `via_report` is now `via1_report`, it only reports VIA1. Comments in `BIOS.s`, `bios_jumptable.inc` and
+  `defines_simple6502.s` were made more concise, and the equates in `bios_jumptable.inc` are aligned.
+
+### Fixed
+
+- Typos in comments (`interrumpt`, `chech`, `caanot`, `doen`, `Thats`).
 
 ### Added
 

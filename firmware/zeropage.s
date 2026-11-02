@@ -27,6 +27,7 @@
 BASIC_ZP_START = $4A
 BASIC_ZP_END   = $DD
 
+; ### Zero Page ###
 .feature org_per_seg    ; enable segment-Local Scope
 .zeropage
 

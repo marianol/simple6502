@@ -1,4 +1,4 @@
-; simple6502 BIOS header: the jump table (public ABI)
+; simple6502 BIOS header: the KERNAL style jump table (public ABI)
 ;
 ; Fixed-address entry points so external programs can call BIOS routines at
 ; stable addresses that never change as the BIOS internals grow.
@@ -32,8 +32,6 @@
 ; include. The .asserts at the end of this file stop the build if the two get
 ; out of sync, so when you append an entry here also add its equate there.
 ;
-; Included by BIOS.s. The routines the entries jump to are in BIOS.s and
-; wozmon_sbc.s. BIOS.s includes bios_jumptable.inc before this file.
 
 .segment "HEADER"
 J_COLD_START:  jmp reset            ; slot 0  $8000

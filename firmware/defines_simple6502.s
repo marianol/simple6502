@@ -64,7 +64,7 @@ ACIA_RESET      = %00000011    ; 6850 reset
 ; Desc  | CA2 | CA1 | Shift    | CB2 | CB1 | Timer2 | Timer2 | IRQ |
 ;                     Register 
 VIA1_BASE   = IO_3
-VIA_COUNT   = 1                 ; VIAs the BIOS port routines know (the VIA index, 0 = VIA1)
+VIA_COUNT   = 1                 ; Crutch for now we cannot hardcode how many VIA's we have, needs to be done at runtime. VIAs the BIOS port routines know (the VIA index, 0 = VIA1)
 VIA1_PORTB  = VIA1_BASE         ; $7F20
 VIA1_PORTA  = VIA1_BASE + 1     ; $7F21
 VIA1_DDRB   = VIA1_BASE + 2     ; $7F22
@@ -96,11 +96,6 @@ VIA_IFR_T1         = %01000000
 ; 10ms = 18432 cycles. In free-run the effective period is (N+2) cycles,
 ; so load N = 18432 - 2 = 18430 = $47FE.
 VIA_T1_10MS        = 18430
-
-
-; ### Zero Page ###
-; The zero page variables are declared in zeropage.s (the zero page map), not here.
-; Include zeropage.s next to this file in the sources that use them.
 
 
 ; ### Useful Constants ###

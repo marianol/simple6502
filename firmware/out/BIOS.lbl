@@ -88,7 +88,7 @@ al 0080C2 .@ram_walk
 al 0080B5 .@fl
 al 0080AC .@fh
 al 008417 .WOZMON_COLD
-al 008139 .via_report
+al 008139 .via1_report
 al 00837B .startupMessage
 al 0080EF .via_init
 al 0081A9 .serial_init
