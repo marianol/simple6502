@@ -39,9 +39,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.762,
-          "height": 1.524,
-          "width": 1.524
+          "drill": 0.9,
+          "height": 1.8,
+          "width": 1.8
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -50,7 +50,23 @@
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.0
+          "border_display_style": 2,
+          "border_hatch_pitch": 0.5,
+          "corner_radius": 0.0,
+          "corner_smoothing": 0,
+          "fill_mode": 0,
+          "hatch_gap": 1.5,
+          "hatch_orientation": 0.0,
+          "hatch_smoothing_level": 0,
+          "hatch_smoothing_value": 0.1,
+          "hatch_thickness": 1.0,
+          "min_clearance": 0.0,
+          "min_island_area": 10.0,
+          "min_thickness": 0.25,
+          "pad_connection": 1,
+          "remove_islands": 0,
+          "thermal_relief_gap": 0.5,
+          "thermal_relief_spoke_width": 0.5
         }
       },
       "diff_pair_dimensions": [
@@ -62,11 +78,19 @@
       ],
       "drc_exclusions": [
         [
-          "courtyards_overlap|100440001|94290001|75bd4700-f263-494f-8d4a-777cc487b207|cdae99f9-4556-476a-81f8-3dd0d078dfb4",
+          "courtyards_overlap|100445000|94295000|75bd4700-f263-494f-8d4a-777cc487b207|cdae99f9-4556-476a-81f8-3dd0d078dfb4",
           ""
         ],
         [
-          "courtyards_overlap|101632291|98770001|46f4b002-b114-4a01-b6b7-de1f9426993d|cdae99f9-4556-476a-81f8-3dd0d078dfb4",
+          "courtyards_overlap|101641794|98775000|46f4b002-b114-4a01-b6b7-de1f9426993d|cdae99f9-4556-476a-81f8-3dd0d078dfb4",
+          ""
+        ],
+        [
+          "courtyards_overlap|103236025|136555000|6c57c356-0851-4b3d-adaf-8d6bed5f192d|ec546f31-f213-49d3-b8a1-9f70108ae640",
+          ""
+        ],
+        [
+          "courtyards_overlap|108669395|139755000|5fac7ac1-ed8c-49ab-99d0-0c561b0e20b4|6c57c356-0851-4b3d-adaf-8d6bed5f192d",
           ""
         ]
       ],
@@ -274,7 +298,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": ""
+      "sch_revision": "1.7.1"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -773,16 +797,16 @@
       {
         "filename": "simple6502.kicad_sch",
         "name": "simple6502",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "c0007eb4-077e-4f77-aad9-8dd15548af06"
       }
     ],
-    "used_designators": "",
+    "used_designators": "J10",
     "variants": []
   },
   "sheets": [
     [
       "c0007eb4-077e-4f77-aad9-8dd15548af06",
-      ""
+      "simple6502"
     ],
     [
       "710f29f6-117a-4dcb-a5e3-826b377de52e",
